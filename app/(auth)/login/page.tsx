@@ -23,7 +23,7 @@ export default function LoginPage() {
       toast(error.message, 'error')
     } else {
       toast('Welcome back!', 'success')
-      router.push('/dashboard')
+      router.push('/select-restaurant')
       router.refresh()
     }
     setLoading(false)

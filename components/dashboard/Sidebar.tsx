@@ -1,13 +1,12 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, ClipboardList, Settings,
-  ShoppingBag, LogOut, Shield, ChevronDown, ChevronUp, CalendarDays, Users,
+  ShoppingBag, LogOut, Shield, ChevronDown, ChevronUp, CalendarDays, Users, Store, ChevronRight,
 } from 'lucide-react'
-import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/helpers'
 
@@ -36,6 +35,14 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(pathname.startsWith('/menu'))
+  const [restaurantName, setRestaurantName] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/restaurant/current')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.name) setRestaurantName(data.name) })
+      .catch(() => {})
+  }, [])
 
   async function handleLogout() {
     const supabase = createClient()
@@ -45,9 +52,10 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 shrink-0 bg-gray-900 min-h-screen flex flex-col text-gray-100">
+    <aside className="w-64 shrink-0 bg-gray-900 h-screen sticky top-0 flex flex-col text-gray-100 overflow-y-auto">
+
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-800">
+      <div className="px-6 py-5 border-b border-gray-800 shrink-0">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
             <ShoppingBag size={16} className="text-white" />
@@ -56,8 +64,22 @@ export default function Sidebar() {
         </Link>
       </div>
 
+      {/* Current restaurant indicator */}
+      <Link
+        href="/select-restaurant"
+        className="mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-orange-500/40 transition-all group shrink-0"
+      >
+        <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-0.5">Managing</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-white truncate">
+            {restaurantName ?? '—'}
+          </p>
+          <ChevronRight size={13} className="text-gray-500 group-hover:text-orange-400 shrink-0 transition-colors" />
+        </div>
+      </Link>
+
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+      <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
         {nav.map(item => {
           if ('children' in item) {
             return (
@@ -71,7 +93,7 @@ export default function Sidebar() {
                   {menuOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
                 {menuOpen && (
-                  <div className="ml-9 mt-1 flex flex-col gap-0.5">
+                  <div className="ml-9 mt-0.5 flex flex-col gap-0.5">
                     {item.children.map(child => (
                       <Link
                         key={child.href}
@@ -121,8 +143,15 @@ export default function Sidebar() {
         </Link>
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-gray-800">
+      {/* Bottom actions — always visible at the bottom */}
+      <div className="px-3 py-4 border-t border-gray-800 space-y-0.5 shrink-0">
+        <Link
+          href="/select-restaurant"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition"
+        >
+          <Store size={18} />
+          Switch Restaurant
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition"
@@ -131,6 +160,7 @@ export default function Sidebar() {
           Sign Out
         </button>
       </div>
+
     </aside>
   )
 }

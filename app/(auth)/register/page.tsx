@@ -34,7 +34,7 @@ export default function RegisterPage() {
       toast(error.message, 'error')
     } else {
       toast('Account created! Please check your email to confirm.', 'success')
-      router.push('/dashboard')
+      router.push('/select-restaurant')
       router.refresh()
     }
     setLoading(false)
