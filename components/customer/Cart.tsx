@@ -8,15 +8,17 @@ import Button from '@/components/ui/Button'
 interface CartProps {
   onCheckout: () => void
   isOpen?: boolean
+  taxRate: number // decimal, e.g. 0.08875
 }
 
-const TAX_RATE = 0.08875
-
-export default function Cart({ onCheckout, isOpen }: CartProps) {
+export default function Cart({ onCheckout, taxRate }: CartProps) {
   const { items, updateQuantity, removeItem, subtotal } = useCartStore()
   const sub = subtotal()
-  const tax = sub * TAX_RATE
+  const tax = Math.round(sub * taxRate * 100) / 100
   const total = sub + tax
+
+  // Display tax % without trailing zeros: 0.08875 → "8.875", 0.10 → "10"
+  const taxPctLabel = parseFloat((taxRate * 100).toFixed(3))
 
   if (items.length === 0) {
     return (
@@ -65,7 +67,12 @@ export default function Cart({ onCheckout, isOpen }: CartProps) {
       {/* Totals */}
       <div className="border-t border-gray-100 pt-4 space-y-1 mb-4">
         <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{formatCurrency(sub)}</span></div>
-        <div className="flex justify-between text-sm text-gray-600"><span>Tax (8.875%)</span><span>{formatCurrency(tax)}</span></div>
+        {taxRate > 0 && (
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Tax ({taxPctLabel}%)</span>
+            <span>{formatCurrency(tax)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-gray-900 text-base mt-2 pt-2 border-t border-gray-100">
           <span>Total</span><span>{formatCurrency(total)}</span>
         </div>

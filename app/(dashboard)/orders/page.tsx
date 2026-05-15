@@ -49,6 +49,20 @@ export default function OrdersPage() {
 
   useEffect(() => { loadData() }, [])
 
+  // Auto-refresh orders list when a new order arrives via realtime
+  useEffect(() => {
+    if (!restaurantId) return
+    const channel = supabase
+      .channel(`orders-page-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` },
+        () => { loadData() }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [restaurantId])
+
   useEffect(() => {
     let result = [...orders]
     if (statusFilter !== 'all') result = result.filter(o => o.status === statusFilter)

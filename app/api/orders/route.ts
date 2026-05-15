@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const {
       restaurant_id, order_type, customer_name, customer_phone, customer_email,
       order_notes, delivery_address, delivery_instructions,
-      subtotal, tax_amount, fee_amount, total_amount, items,
+      subtotal, fee_amount, items, customer_user_id,
     } = body
 
     if (!restaurant_id || !customer_name || !customer_phone || !items?.length) {
@@ -20,13 +20,19 @@ export async function POST(request: Request) {
     // Verify restaurant exists and is active
     const { data: restaurant, error: rErr } = await supabase
       .from('restaurants')
-      .select('id, is_active, online_ordering_enabled')
+      .select('id, is_active, online_ordering_enabled, tax_rate')
       .eq('id', restaurant_id)
       .single()
 
     if (rErr || !restaurant || !restaurant.is_active || !restaurant.online_ordering_enabled) {
       return NextResponse.json({ error: 'Restaurant is not accepting orders' }, { status: 403 })
     }
+
+    // Recalculate tax and total server-side — never trust client values
+    const taxRate = restaurant.tax_rate ?? 0
+    const tax_amount = Math.round(subtotal * (taxRate / 100) * 100) / 100
+    const tip = Math.max(0, fee_amount ?? 0)
+    const total_amount = Math.round((subtotal + tax_amount + tip) * 100) / 100
 
     // Upsert customer
     let customerId: string | null = null
@@ -47,12 +53,13 @@ export async function POST(request: Request) {
       .insert({
         restaurant_id,
         customer_id: customerId,
+        customer_user_id: customer_user_id ?? null,
         order_number: generateOrderNumber(),
         status: 'new',
         order_type,
         customer_name, customer_phone, customer_email: customer_email || '',
         order_notes, delivery_address, delivery_instructions,
-        subtotal, tax_amount, fee_amount, total_amount,
+        subtotal, tax_amount, fee_amount: tip, total_amount,
       })
       .select()
       .single()
@@ -92,6 +99,29 @@ export async function POST(request: Request) {
           }))
         )
       }
+    }
+
+    // Emit order_placed event for AI event log (fire-and-forget)
+    if (customerId) {
+      supabase.from('customer_events').insert({
+        customer_id: customerId,
+        restaurant_id,
+        event_type: 'order_placed',
+        event_at: order.created_at,
+        recorded_at: new Date().toISOString(),
+        source_id: order.id,
+        device_type: 'desktop_web',
+        metadata: {
+          order_id:      order.id,
+          order_total:   total_amount,
+          item_count:    items.length,
+          order_type,
+          channel:       'web',
+          promo_applied: false,
+          tip_amount:    tip,
+          tip_pct:       subtotal > 0 ? Math.round((tip / subtotal) * 1000) / 10 : 0,
+        },
+      }).then()
     }
 
     return NextResponse.json(order, { status: 201 })

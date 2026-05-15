@@ -26,6 +26,12 @@ export interface Restaurant {
   pickup_enabled: boolean
   dine_in_enabled: boolean
   delivery_enabled: boolean
+  tax_rate: number
+  reservations_enabled: boolean
+  reservation_capacity: number
+  reservation_max_party_size: number
+  reservation_advance_days: number
+  reservation_min_notice_hours: number
   is_active: boolean
   created_at: string
   updated_at: string
@@ -146,13 +152,161 @@ export interface Option {
 
 export type OptionInsert = Omit<Option, 'id' | 'created_at' | 'updated_at'>
 
-// ── Customer ──────────────────────────────────────────────────
+// ── Reservation ───────────────────────────────────────────
+export type ReservationStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled' | 'completed' | 'no_show'
+
+export interface Reservation {
+  id: string
+  restaurant_id: string
+  customer_name: string
+  customer_phone: string
+  customer_email: string | null
+  party_size: number
+  reservation_date: string   // 'YYYY-MM-DD'
+  reservation_time: string   // 'HH:MM:SS' from postgres
+  status: ReservationStatus
+  notes: string | null
+  internal_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Customer Management enums ─────────────────────────────────
+export type AcquisitionSource =
+  | 'organic' | 'google_ad' | 'instagram_ad' | 'facebook_ad'
+  | 'referral' | 'qr_code' | 'walk_in' | 'loyalty_signup' | 'other'
+
+export type PreferredContactMethod = 'email' | 'sms' | 'push' | 'none'
+
+export type DietaryFlagType =
+  | 'vegetarian' | 'vegan' | 'gluten_free' | 'halal'
+  | 'kosher' | 'nut_allergy' | 'dairy_free' | 'shellfish_allergy' | 'other'
+
+export type CustomerEventType =
+  | 'order_placed' | 'order_cancelled' | 'order_refunded'
+  | 'reservation_made' | 'reservation_cancelled'
+  | 'cart_abandoned' | 'item_viewed' | 'promo_redeemed'
+  | 'promo_ignored' | 'review_submitted' | 'support_ticket_opened'
+  | 'loyalty_points_earned' | 'loyalty_points_redeemed'
+  | 'email_opened' | 'email_clicked' | 'sms_opened'
+  | 'app_session_started' | 'login' | 'logout'
+
+export type DeviceType = 'mobile_web' | 'desktop_web' | 'ios_app' | 'android_app'
+
+// ── Customer (restaurant-scoped, extended with CRM + AI fields) ───────────
 export interface Customer {
   id: string
   restaurant_id: string
+  // Original field kept for backward compatibility with order upsert
   name: string
-  phone: string | null
+  // Split name fields for CRM
+  first_name: string | null
+  last_name: string | null
   email: string | null
+  phone: string | null
+  birthday: string | null
+  anniversary: string | null
+  preferred_contact_method: PreferredContactMethod
+  marketing_opt_in: boolean
+  marketing_opt_in_at: string | null
+  acquisition_source: AcquisitionSource
+  acquisition_campaign_id: string | null
+  acquisition_source_detail: string | null
+  loyalty_points_balance: number
+  tags: string[]
+  notes: string | null
+  is_blocked: boolean
+  last_seen_at: string | null
+  auth_user_id: string | null
+  // AI placeholder columns (null until ML pipeline is built)
+  churn_risk_score: number | null
+  ltv_predicted_90d: number | null
+  segment_ai_label: string | null
+  last_ai_scored_at: string | null
+  data_version: number
+  created_at: string
+  updated_at: string
+}
+
+// Computed stats joined from the orders table
+export interface CustomerWithStats extends Customer {
+  total_orders: number
+  lifetime_value: number
+  avg_order_value: number
+  last_order_at: string | null
+  first_order_at: string | null
+}
+
+// ── Customer Address ──────────────────────────────────────────
+export interface CustomerAddress {
+  id: string
+  customer_id: string
+  restaurant_id: string
+  label: string
+  address_line_1: string
+  address_line_2: string | null
+  city: string
+  state: string
+  zip: string
+  country: string
+  latitude: number | null
+  longitude: number | null
+  is_default: boolean
+  delivery_zone_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Customer Event (append-only AI training log) ──────────────
+export interface CustomerEvent {
+  id: string
+  customer_id: string
+  restaurant_id: string
+  event_type: CustomerEventType
+  event_at: string
+  recorded_at: string
+  session_id: string | null
+  device_type: DeviceType
+  source_id: string | null
+  metadata: Record<string, unknown>
+}
+
+// ── Customer Segment ──────────────────────────────────────────
+export interface CustomerSegment {
+  id: string
+  restaurant_id: string
+  name: string
+  description: string | null
+  color: string
+  is_system: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerSegmentMember {
+  segment_id: string
+  customer_id: string
+  restaurant_id: string
+  added_at: string
+  added_by: string
+}
+
+// ── Customer Dietary Flag ─────────────────────────────────────
+export interface CustomerDietaryFlag {
+  id: string
+  customer_id: string
+  restaurant_id: string
+  flag_type: DietaryFlagType
+  source: 'self_reported' | 'inferred_from_orders'
+  created_at: string
+}
+
+// ── Customer Profile (platform-wide auth account) ─────────────
+export interface CustomerProfile {
+  id: string           // = auth.users.id
+  display_name: string
+  phone: string
   created_at: string
   updated_at: string
 }
@@ -165,6 +319,7 @@ export interface Order {
   id: string
   restaurant_id: string
   customer_id: string | null
+  customer_user_id: string | null
   order_number: string
   status: OrderStatus
   order_type: OrderType

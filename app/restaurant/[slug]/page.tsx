@@ -6,13 +6,19 @@ import { useCartStore } from '@/store/cart'
 import { isRestaurantOpen } from '@/lib/utils/hours'
 import { formatCurrency } from '@/lib/utils/helpers'
 import Image from 'next/image'
-import { Search, ShoppingBag, MapPin, Phone, Clock, X, Plus, Minus, ChevronRight } from 'lucide-react'
+import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Package } from 'lucide-react'
 import ItemModal from '@/components/customer/ItemModal'
 import Cart from '@/components/customer/Cart'
-import type { Category, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
+import ReservationModal from '@/components/customer/ReservationModal'
+import CustomerAuthModal from '@/components/customer/CustomerAuthModal'
+import CustomerProfileModal from '@/components/customer/CustomerProfileModal'
+import OrderHistory from '@/components/customer/OrderHistory'
+import type { Category, CustomerProfile, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
+import type { Session } from '@supabase/supabase-js'
 import { use } from 'react'
 
-const TAX_RATE = 0.08875
+// Preset tip percentages; -1 = custom input
+const TIP_PRESETS = [0, 15, 18, 20, 25] as const
 
 export default function RestaurantPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -32,14 +38,75 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [checkoutForm, setCheckoutForm] = useState({
     name: '', phone: '', email: '', notes: '', delivery_address: '', delivery_instructions: '',
   })
+  const [wantsUtensils, setWantsUtensils] = useState(false)
+  const [tipPercent, setTipPercent] = useState<number>(0)  // 0 = no tip, -1 = custom, 15/18/20/25 = preset
+  const [customTip, setCustomTip] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [orderConfirmed, setOrderConfirmed] = useState<{ orderId: string; orderNumber: string } | null>(null)
+  const [reservationOpen, setReservationOpen] = useState(false)
+
+  // Customer auth state
+  const [customerSession, setCustomerSession] = useState<Session | null>(null)
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [orderHistoryOpen, setOrderHistoryOpen] = useState(false)
 
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   const itemCount = cartStore.itemCount()
   const subtotal = cartStore.subtotal()
 
+  // Derived totals
+  const taxRate = (restaurant?.tax_rate ?? 0) / 100
+  const taxAmount = Math.round(subtotal * taxRate * 100) / 100
+  const tipAmount = tipPercent === -1
+    ? Math.max(0, Math.round((parseFloat(customTip) || 0) * 100) / 100)
+    : Math.round(subtotal * tipPercent) / 100
+  const totalAmount = Math.round((subtotal + taxAmount + tipAmount) * 100) / 100
+
   useEffect(() => { loadRestaurant() }, [slug])
+
+  // Auth state listener — runs once on mount
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCustomerSession(session)
+      if (session) fetchCustomerProfile(session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setCustomerSession(session)
+      if (session) {
+        fetchCustomerProfile(session)
+      } else {
+        setCustomerProfile(null)
+        setCheckoutForm({ name: '', phone: '', email: '', notes: '', delivery_address: '', delivery_instructions: '' })
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function fetchCustomerProfile(session: Session) {
+    const res = await fetch('/api/customer/profile')
+    if (!res.ok) return
+    const data: CustomerProfile | null = await res.json()
+    if (data) {
+      setCustomerProfile(data)
+      setCheckoutForm(f => ({
+        ...f,
+        name: data.display_name,
+        phone: data.phone,
+        email: session.user.email ?? f.email,
+      }))
+    } else {
+      setProfileModalOpen(true)
+    }
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setOrderHistoryOpen(false)
+  }
 
   async function loadRestaurant() {
     setLoading(true)
@@ -71,18 +138,10 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       subcategories: (subs ?? []).filter(s => s.category_id === c.id),
     }))
 
-    const fullRestaurant: PublicRestaurant = {
-      ...r,
-      restaurant_hours: hours ?? [],
-      categories: enrichedCats,
-      menu_items: enrichedItems,
-    }
-
-    setRestaurant(fullRestaurant)
+    setRestaurant({ ...r, restaurant_hours: hours ?? [], categories: enrichedCats, menu_items: enrichedItems })
     setIsOpen(isRestaurantOpen(hours ?? [], r.timezone))
     if (enrichedCats.length > 0) setActiveCategory(enrichedCats[0].id)
 
-    // Set default order type
     if (r.pickup_enabled) setOrderType('pickup')
     else if (r.dine_in_enabled) setOrderType('dine_in')
     else if (r.delivery_enabled) setOrderType('delivery')
@@ -121,8 +180,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     if (!checkoutForm.name || !checkoutForm.phone) return
 
     setCheckoutLoading(true)
-    const tax = subtotal * TAX_RATE
-    const total = subtotal + tax
+
+    // Compose order notes — prepend utensil request if selected
+    const noteParts: string[] = []
+    if (wantsUtensils) noteParts.push('Utensils requested')
+    if (checkoutForm.notes.trim()) noteParts.push(checkoutForm.notes.trim())
+    const orderNotes = noteParts.join('\n') || null
 
     const res = await fetch('/api/orders', {
       method: 'POST',
@@ -133,13 +196,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         customer_name: checkoutForm.name,
         customer_phone: checkoutForm.phone,
         customer_email: checkoutForm.email,
-        order_notes: checkoutForm.notes || null,
+        order_notes: orderNotes,
         delivery_address: orderType === 'delivery' ? checkoutForm.delivery_address : null,
         delivery_instructions: orderType === 'delivery' ? checkoutForm.delivery_instructions : null,
         subtotal,
-        tax_amount: tax,
-        fee_amount: 0,
-        total_amount: total,
+        fee_amount: tipAmount,   // tip stored in fee_amount
+        customer_user_id: customerSession?.user?.id ?? null,
         items: cartStore.items.map(item => ({
           menu_item_id: item.menu_item_id,
           item_name_snapshot: item.name,
@@ -162,6 +224,9 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       cartStore.clearCart()
       setCheckoutOpen(false)
       setCartOpen(false)
+      setTipPercent(0)
+      setCustomTip('')
+      setWantsUtensils(false)
     }
     setCheckoutLoading(false)
   }
@@ -176,7 +241,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-8">
       <div className="text-6xl mb-4">🍽️</div>
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Restaurant not found</h1>
-      <p className="text-gray-500">This restaurant page doesn't exist or is not available.</p>
+      <p className="text-gray-500">This restaurant page doesn&apos;t exist or is not available.</p>
     </div>
   )
 
@@ -210,6 +275,33 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
       {/* Hero / Header */}
       <div className="relative">
+        {/* Customer auth controls — top-right corner */}
+        <div className="absolute top-3 right-4 z-10 flex items-center gap-2">
+          {customerSession ? (
+            <>
+              <button
+                onClick={() => setOrderHistoryOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition shadow-sm"
+              >
+                <Package size={14} /> My Orders
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-medium text-gray-500 hover:bg-white transition shadow-sm"
+              >
+                <User size={14} /> {customerProfile?.display_name?.split(' ')[0] ?? 'Account'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-semibold text-orange-500 hover:bg-white transition shadow-sm"
+            >
+              <User size={14} /> Sign in
+            </button>
+          )}
+        </div>
+
         {restaurant.cover_image_url ? (
           <div className="relative h-56 md:h-72">
             <Image src={restaurant.cover_image_url} alt={restaurant.name} fill className="object-cover" />
@@ -245,6 +337,14 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <Phone size={13} /> {restaurant.phone}
                 </p>
               )}
+              {restaurant.reservations_enabled && (
+                <button
+                  onClick={() => setReservationOpen(true)}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl shadow-sm transition"
+                >
+                  <CalendarDays size={15} /> Reserve a Table
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -258,7 +358,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
           </div>
         </div>
       )}
-
       {!restaurant.online_ordering_enabled && (
         <div className="max-w-6xl mx-auto px-4">
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl px-4 py-3 text-sm mb-4">
@@ -312,7 +411,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                       {cat.name}
                       <span className="text-sm font-normal text-gray-400">{catItems.length} items</span>
                     </h2>
-
                     {cat.subcategories.length > 0 ? (
                       cat.subcategories.map(sub => {
                         const subItems = filteredItems(cat.id, sub.id)
@@ -348,7 +446,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                 <ShoppingBag size={18} className="text-orange-500" /> Your Order
                 {itemCount > 0 && <span className="ml-auto bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{itemCount}</span>}
               </h2>
-              <Cart onCheckout={() => setCheckoutOpen(true)} />
+              <Cart taxRate={taxRate} onCheckout={() => setCheckoutOpen(true)} />
             </div>
           </div>
         </div>
@@ -375,7 +473,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <button onClick={() => setCartOpen(false)}><X size={22} className="text-gray-400" /></button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <Cart onCheckout={() => { setCartOpen(false); setCheckoutOpen(true) }} />
+              <Cart taxRate={taxRate} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true) }} />
             </div>
           </div>
         </div>
@@ -384,6 +482,47 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       {/* Item Modal */}
       {selectedItem && (
         <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />
+      )}
+
+      {/* Reservation Modal */}
+      {reservationOpen && restaurant.reservations_enabled && (
+        <ReservationModal
+          restaurant={restaurant}
+          onClose={() => setReservationOpen(false)}
+          prefill={{
+            name: customerProfile?.display_name,
+            phone: customerProfile?.phone,
+            email: customerSession?.user?.email ?? undefined,
+          }}
+          customerUserId={customerSession?.user?.id ?? null}
+        />
+      )}
+
+      {/* Customer Auth Modal */}
+      {authModalOpen && (
+        <CustomerAuthModal restaurantSlug={slug} onClose={() => setAuthModalOpen(false)} />
+      )}
+
+      {/* Customer Profile Completion Modal */}
+      {profileModalOpen && customerSession && (
+        <CustomerProfileModal
+          email={customerSession.user.email ?? ''}
+          onSaved={profile => {
+            setCustomerProfile(profile)
+            setProfileModalOpen(false)
+            setCheckoutForm(f => ({
+              ...f,
+              name: profile.display_name,
+              phone: profile.phone,
+              email: customerSession.user.email ?? f.email,
+            }))
+          }}
+        />
+      )}
+
+      {/* Order History Slide-over */}
+      {orderHistoryOpen && restaurant && (
+        <OrderHistory restaurantId={restaurant.id} onClose={() => setOrderHistoryOpen(false)} />
       )}
 
       {/* Checkout Modal */}
@@ -395,7 +534,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <h2 className="text-lg font-bold text-gray-900">Checkout</h2>
               <button onClick={() => setCheckoutOpen(false)}><X size={20} className="text-gray-400" /></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {/* Order Type */}
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Order Type</p>
@@ -448,9 +588,80 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                 </div>
               )}
 
+              {/* Order Notes */}
               <textarea value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Order notes (optional)" rows={2}
+                placeholder="Special instructions (optional)" rows={2}
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 resize-none" />
+
+              {/* Utensils */}
+              <label className="flex items-center justify-between gap-3 cursor-pointer bg-gray-50 hover:bg-gray-100 transition rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Utensils size={16} className="text-gray-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Include utensils</p>
+                    <p className="text-xs text-gray-400">Chopsticks, fork &amp; napkins</p>
+                  </div>
+                </div>
+                <div className="relative shrink-0">
+                  <input type="checkbox" className="sr-only peer"
+                    checked={wantsUtensils} onChange={e => setWantsUtensils(e.target.checked)} />
+                  <div className="w-10 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                  <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
+                </div>
+              </label>
+
+              {/* Tip */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Add a Tip</p>
+                <div className="flex flex-wrap gap-2">
+                  {TIP_PRESETS.map(pct => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => { setTipPercent(pct); setCustomTip('') }}
+                      className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition ${
+                        tipPercent === pct
+                          ? 'border-orange-500 bg-orange-50 text-orange-600'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {pct === 0 ? 'No tip' : (
+                        <>
+                          {pct}%
+                          {tipPercent === pct && subtotal > 0 && (
+                            <span className="ml-1 text-orange-400 text-xs">
+                              {formatCurrency(Math.round(subtotal * pct) / 100)}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setTipPercent(-1)}
+                    className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition ${
+                      tipPercent === -1
+                        ? 'border-orange-500 bg-orange-50 text-orange-600'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    Custom
+                  </button>
+                </div>
+                {tipPercent === -1 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-gray-500">$</span>
+                    <input
+                      type="number" min="0" step="0.50"
+                      value={customTip}
+                      onChange={e => setCustomTip(e.target.value)}
+                      placeholder="0.00"
+                      className="w-28 border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-orange-400"
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Payment */}
               <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
@@ -458,22 +669,37 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               </div>
 
               {/* Order Summary */}
-              <div className="border-t border-gray-100 pt-4 space-y-1">
-                <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                <div className="flex justify-between text-sm text-gray-600"><span>Tax</span><span>{formatCurrency(subtotal * TAX_RATE)}</span></div>
-                <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100">
-                  <span>Total</span><span>{formatCurrency(subtotal * (1 + TAX_RATE))}</span>
+              <div className="border-t border-gray-100 pt-4 space-y-1.5">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
+                </div>
+                {taxRate > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Tax ({parseFloat((taxRate * 100).toFixed(3))}%)</span>
+                    <span>{formatCurrency(taxAmount)}</span>
+                  </div>
+                )}
+                {tipAmount > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Tip</span><span>{formatCurrency(tipAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
+                  <span>Total</span><span>{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-100 shrink-0">
-              <button onClick={placeOrder} disabled={checkoutLoading || !isOpen || !restaurant.online_ordering_enabled}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base">
+              <button
+                onClick={placeOrder}
+                disabled={checkoutLoading || !isOpen || !restaurant.online_ordering_enabled}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base"
+              >
                 {checkoutLoading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>Place Order · {formatCurrency(subtotal * (1 + TAX_RATE))}</>
+                  <>Place Order · {formatCurrency(totalAmount)}</>
                 )}
               </button>
             </div>

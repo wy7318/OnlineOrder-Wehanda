@@ -11,7 +11,9 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays } from 'lucide-react'
+import { useNotificationSettings } from '@/store/notificationSettings'
+import { playBell } from '@/lib/utils/bellSound'
 
 const TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
@@ -38,6 +40,10 @@ function defaultHours(): Omit<RestaurantHours, 'id' | 'restaurant_id' | 'created
 export default function SetupPage() {
   const { toast } = useToast()
   const supabase = createClient()
+  const {
+    orderSoundMode, orderRepeatCount, setOrderSoundMode, setOrderRepeatCount,
+    reservationSoundMode, reservationRepeatCount, setReservationSoundMode, setReservationRepeatCount,
+  } = useNotificationSettings()
   const [loading, setLoading] = useState(false)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [hours, setHours] = useState(defaultHours())
@@ -46,6 +52,12 @@ export default function SetupPage() {
     description: '', timezone: 'America/New_York',
     online_ordering_enabled: true, pickup_enabled: true,
     dine_in_enabled: false, delivery_enabled: false,
+    tax_rate: 0,
+    reservations_enabled: false,
+    reservation_capacity: 20,
+    reservation_max_party_size: 10,
+    reservation_advance_days: 30,
+    reservation_min_notice_hours: 1,
   })
 
   useEffect(() => {
@@ -68,6 +80,12 @@ export default function SetupPage() {
           online_ordering_enabled: r.online_ordering_enabled,
           pickup_enabled: r.pickup_enabled, dine_in_enabled: r.dine_in_enabled,
           delivery_enabled: r.delivery_enabled,
+          tax_rate: r.tax_rate ?? 0,
+          reservations_enabled: r.reservations_enabled ?? false,
+          reservation_capacity: r.reservation_capacity ?? 20,
+          reservation_max_party_size: r.reservation_max_party_size ?? 10,
+          reservation_advance_days: r.reservation_advance_days ?? 30,
+          reservation_min_notice_hours: r.reservation_min_notice_hours ?? 1,
         })
         const { data: h } = await supabase
           .from('restaurant_hours')
@@ -172,6 +190,82 @@ export default function SetupPage() {
             </div>
           </div>
 
+          {/* Pricing */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 mb-5">Pricing</h3>
+            <Input
+              label="Sales Tax Rate (%)"
+              type="number"
+              min="0"
+              max="30"
+              step="0.001"
+              placeholder="e.g. 8.875"
+              value={form.tax_rate === 0 ? '' : String(form.tax_rate)}
+              onChange={e => setField('tax_rate', parseFloat(e.target.value) || 0)}
+              hint="Applied to every customer order at checkout. Enter 0 for no tax."
+            />
+          </div>
+
+          {/* Reservation Settings */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <CalendarDays size={18} className="text-orange-500" /> Reservations
+              </h3>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" className="sr-only peer"
+                    checked={form.reservations_enabled}
+                    onChange={e => setField('reservations_enabled', e.target.checked)} />
+                  <div className="w-10 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                  <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {form.reservations_enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
+            </div>
+
+            {form.reservations_enabled && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Input
+                  label="Capacity per time slot (people)"
+                  type="number" min="1" max="500"
+                  value={String(form.reservation_capacity)}
+                  onChange={e => setField('reservation_capacity', parseInt(e.target.value) || 1)}
+                  hint="Max total guests accepted at the same time slot."
+                />
+                <Input
+                  label="Max party size"
+                  type="number" min="1" max="100"
+                  value={String(form.reservation_max_party_size)}
+                  onChange={e => setField('reservation_max_party_size', parseInt(e.target.value) || 1)}
+                  hint="Largest group a customer can book online."
+                />
+                <Input
+                  label="Advance booking (days)"
+                  type="number" min="1" max="365"
+                  value={String(form.reservation_advance_days)}
+                  onChange={e => setField('reservation_advance_days', parseInt(e.target.value) || 1)}
+                  hint="How far ahead customers can reserve."
+                />
+                <Input
+                  label="Minimum notice (hours)"
+                  type="number" min="0" max="72"
+                  value={String(form.reservation_min_notice_hours)}
+                  onChange={e => setField('reservation_min_notice_hours', parseInt(e.target.value) || 0)}
+                  hint="Earliest a customer can book before the slot."
+                />
+              </div>
+            )}
+
+            {!form.reservations_enabled && (
+              <p className="text-sm text-gray-400">
+                Enable reservations to let customers book tables directly from your public page.
+              </p>
+            )}
+          </div>
+
           {/* Operation Hours */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
@@ -231,6 +325,116 @@ export default function SetupPage() {
                   </div>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Alert Sounds */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <Bell size={16} className="text-orange-500" /> Alert Sounds
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">Plays in this browser tab when new activity arrives</p>
+
+            {/* Orders */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-orange-500">O</span>
+                </div>
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Orders</p>
+              </div>
+              <div className="space-y-2.5">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="orderSoundMode" value="none"
+                    checked={orderSoundMode === 'none'} onChange={() => setOrderSoundMode('none')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">No sound</p>
+                    <p className="text-xs text-gray-400">Silent — visual only</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="orderSoundMode" value="repeat"
+                    checked={orderSoundMode === 'repeat'} onChange={() => setOrderSoundMode('repeat')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">Ring a set number of times</p>
+                    {orderSoundMode === 'repeat' && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-xs text-gray-500">Ring</span>
+                        <input type="number" min={1} max={10} value={orderRepeatCount}
+                          onChange={e => setOrderRepeatCount(Math.min(10, Math.max(1, Number(e.target.value))))}
+                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-400" />
+                        <span className="text-xs text-gray-500">time{orderRepeatCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="orderSoundMode" value="until_click"
+                    checked={orderSoundMode === 'until_click'} onChange={() => setOrderSoundMode('until_click')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Ring until acknowledged</p>
+                    <p className="text-xs text-gray-400">Repeats every 3 s until you click</p>
+                  </div>
+                </label>
+              </div>
+              <button type="button" onClick={() => playBell()}
+                className="mt-3 flex items-center gap-1.5 text-xs text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition">
+                <Bell size={12} /> Test order sound
+              </button>
+            </div>
+
+            <div className="border-t border-gray-100 pt-5">
+              {/* Reservations */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-blue-500">R</span>
+                </div>
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Reservations</p>
+              </div>
+              <div className="space-y-2.5">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="reservationSoundMode" value="none"
+                    checked={reservationSoundMode === 'none'} onChange={() => setReservationSoundMode('none')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">No sound</p>
+                    <p className="text-xs text-gray-400">Silent — visual only</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="reservationSoundMode" value="repeat"
+                    checked={reservationSoundMode === 'repeat'} onChange={() => setReservationSoundMode('repeat')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">Ring a set number of times</p>
+                    {reservationSoundMode === 'repeat' && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-xs text-gray-500">Ring</span>
+                        <input type="number" min={1} max={10} value={reservationRepeatCount}
+                          onChange={e => setReservationRepeatCount(Math.min(10, Math.max(1, Number(e.target.value))))}
+                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-400" />
+                        <span className="text-xs text-gray-500">time{reservationRepeatCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="reservationSoundMode" value="until_click"
+                    checked={reservationSoundMode === 'until_click'} onChange={() => setReservationSoundMode('until_click')}
+                    className="mt-0.5 accent-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Ring until acknowledged</p>
+                    <p className="text-xs text-gray-400">Repeats every 3 s until you click</p>
+                  </div>
+                </label>
+              </div>
+              <button type="button" onClick={() => playBell()}
+                className="mt-3 flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                <Bell size={12} /> Test reservation sound
+              </button>
             </div>
           </div>
 
