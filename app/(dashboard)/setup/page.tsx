@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { slugify } from '@/lib/utils/helpers'
 import { DAY_NAMES } from '@/lib/utils/hours'
@@ -37,9 +38,11 @@ function defaultHours(): Omit<RestaurantHours, 'id' | 'restaurant_id' | 'created
   }))
 }
 
-export default function SetupPage() {
+function SetupContent() {
   const { toast } = useToast()
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const isNew = searchParams.get('new') === '1'
   const {
     orderSoundMode, orderRepeatCount, setOrderSoundMode, setOrderRepeatCount,
     reservationSoundMode, reservationRepeatCount, setReservationSoundMode, setReservationRepeatCount,
@@ -61,15 +64,12 @@ export default function SetupPage() {
   })
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    if (isNew) return // Create mode — don't load any existing restaurant
 
-      const { data: r } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('owner_user_id', user.id)
-        .single()
+    async function load() {
+      // Load the currently selected restaurant (respects multi-restaurant cookie)
+      const res = await fetch('/api/restaurant/current')
+      const r = res.ok ? await res.json() : null
 
       if (r) {
         setRestaurant(r)
@@ -96,7 +96,7 @@ export default function SetupPage() {
       }
     }
     load()
-  }, [])
+  }, [isNew]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm(f => {
@@ -131,9 +131,20 @@ export default function SetupPage() {
       if (error) { toast(error.message, 'error'); setLoading(false); return }
       restaurantId = data.id
       setRestaurant(data)
+
+      // Save hours then select the new restaurant and go to its dashboard
+      if (restaurantId) {
+        await supabase.from('restaurant_hours').delete().eq('restaurant_id', restaurantId)
+        const hoursToInsert = hours.map(h => ({ ...h, restaurant_id: restaurantId! }))
+        await supabase.from('restaurant_hours').insert(hoursToInsert)
+      }
+      toast('Restaurant created! Opening dashboard…', 'success')
+      setLoading(false)
+      window.location.href = `/api/restaurant/select?id=${restaurantId}`
+      return
     }
 
-    // Save hours
+    // Save hours (edit mode)
     if (restaurantId) {
       await supabase.from('restaurant_hours').delete().eq('restaurant_id', restaurantId)
       const hoursToInsert = hours.map(h => ({ ...h, restaurant_id: restaurantId! }))
@@ -447,5 +458,13 @@ export default function SetupPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-gray-400 text-sm">Loading…</div>}>
+      <SetupContent />
+    </Suspense>
   )
 }

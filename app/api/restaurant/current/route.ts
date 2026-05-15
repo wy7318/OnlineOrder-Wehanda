@@ -1,15 +1,11 @@
+import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
-export interface RestaurantContext {
-  restaurantId: string
-  userId: string
-}
-
-export async function getRestaurantContext(): Promise<RestaurantContext | null> {
+export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) return NextResponse.json(null)
 
   const cookieStore = await cookies()
   const selectedId = cookieStore.get('selected_restaurant_id')?.value
@@ -17,22 +13,21 @@ export async function getRestaurantContext(): Promise<RestaurantContext | null> 
   if (selectedId) {
     const { data } = await supabase
       .from('restaurants')
-      .select('id')
+      .select('*')
       .eq('id', selectedId)
       .eq('owner_user_id', user.id)
       .single()
-    if (data) return { restaurantId: data.id, userId: user.id }
+    if (data) return NextResponse.json(data)
   }
 
-  // Fallback for single-restaurant users (no cookie needed)
+  // Fallback: first restaurant owned by user
   const { data } = await supabase
     .from('restaurants')
-    .select('id')
+    .select('*')
     .eq('owner_user_id', user.id)
     .order('created_at', { ascending: true })
     .limit(1)
     .single()
 
-  if (!data) return null
-  return { restaurantId: data.id, userId: user.id }
+  return NextResponse.json(data ?? null)
 }
