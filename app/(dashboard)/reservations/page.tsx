@@ -127,7 +127,14 @@ export default function ReservationsPage() {
   }
 
   const dayReservations = selectedDate ? (byDate[selectedDate] ?? []) : []
-  const pendingTotal = reservations.filter(r => r.status === 'pending').length
+  const pendingReservations = reservations
+    .filter(r => r.status === 'pending')
+    .sort((a, b) =>
+      a.reservation_date !== b.reservation_date
+        ? a.reservation_date.localeCompare(b.reservation_date)
+        : a.reservation_time.localeCompare(b.reservation_time)
+    )
+  const pendingTotal = pendingReservations.length
   const confirmedTotal = reservations.filter(r => r.status === 'confirmed').length
 
   const days = calDays()
@@ -143,6 +150,88 @@ export default function ReservationsPage() {
           </Button>
         }
       />
+
+      {/* ── Pending Reservations Banner ───────────────────────────────────── */}
+      {!loading && pendingTotal > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <h2 className="font-semibold text-amber-800 text-sm">
+              {pendingTotal} reservation{pendingTotal !== 1 ? 's' : ''} awaiting confirmation
+            </h2>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {pendingReservations.map(rsv => {
+              const dateObj = new Date(rsv.reservation_date + 'T00:00:00')
+              const isToday = rsv.reservation_date === todayStr
+              const isTomorrow = rsv.reservation_date === toDateStr(new Date(Date.now() + 86_400_000))
+              const dateLabel = isToday ? 'Today'
+                : isTomorrow ? 'Tomorrow'
+                : dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
+              return (
+                <div
+                  key={rsv.id}
+                  className="bg-white rounded-xl border border-amber-100 p-4 flex flex-col gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{rsv.customer_name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                        <span className={`font-medium ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>
+                          {dateLabel}
+                        </span>
+                        <span>·</span>
+                        <span className="flex items-center gap-1">
+                          <Clock size={10} /> {formatTime12h(String(rsv.reservation_time).substring(0, 5))}
+                        </span>
+                        <span>·</span>
+                        <span className="flex items-center gap-1">
+                          <Users size={10} /> {rsv.party_size}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{rsv.customer_phone}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedDate(rsv.reservation_date)
+                        setCalMonth({ year: dateObj.getFullYear(), month: dateObj.getMonth() })
+                      }}
+                      className="text-[10px] text-amber-600 hover:text-amber-700 font-medium whitespace-nowrap shrink-0 mt-0.5"
+                    >
+                      View →
+                    </button>
+                  </div>
+
+                  {rsv.notes && (
+                    <p className="text-xs text-gray-400 italic border-t border-gray-50 pt-2">
+                      &ldquo;{rsv.notes}&rdquo;
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 pt-1 border-t border-gray-50">
+                    <button
+                      onClick={() => updateStatus(rsv.id, 'confirmed')}
+                      disabled={updatingId === rsv.id}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold rounded-lg transition disabled:opacity-50"
+                    >
+                      <Check size={11} /> Confirm
+                    </button>
+                    <button
+                      onClick={() => updateStatus(rsv.id, 'declined')}
+                      disabled={updatingId === rsv.id}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg transition disabled:opacity-50"
+                    >
+                      <X size={11} /> Decline
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[300px_1fr] gap-6">
         {/* ── Calendar ── */}
