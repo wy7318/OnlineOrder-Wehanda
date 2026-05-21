@@ -1,51 +1,47 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getRestaurantContext } from '@/lib/utils/restaurant-auth'
+import { midnightUTC, todayInTz, startOfToday, shiftDays, weekdayName, dayOfWeekInTz } from '@/lib/utils/timezone'
 
 type Period = 'today' | 'yesterday' | 'this_week'
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-function getPeriodBounds(period: Period): {
-  periodStart: Date; periodEnd: Date; priorStart: Date; priorEnd: Date; priorLabel: string
-} {
+function getPeriodBounds(period: Period, tz: string) {
   const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayStr = todayInTz(tz, now)
+  const todayStart = startOfToday(tz, now)
 
   if (period === 'today') {
-    // Compare to same day last week at same elapsed time
     const elapsed = now.getTime() - todayStart.getTime()
-    const priorStart = new Date(todayStart)
-    priorStart.setDate(priorStart.getDate() - 7)
+    const priorStr = shiftDays(todayStr, -7)
+    const priorStart = midnightUTC(priorStr, tz)
     const priorEnd = new Date(priorStart.getTime() + elapsed)
     return {
       periodStart: todayStart, periodEnd: now,
       priorStart, priorEnd,
-      priorLabel: `Last ${DAY_NAMES[priorStart.getDay()]}`,
+      priorLabel: `Last ${weekdayName(priorStr, tz)}`,
     }
   }
 
   if (period === 'yesterday') {
-    const yStart = new Date(todayStart)
-    yStart.setDate(yStart.getDate() - 1)
-    // Compare to same day last week
-    const priorStart = new Date(yStart)
-    priorStart.setDate(priorStart.getDate() - 7)
-    const priorEnd = new Date(priorStart)
-    priorEnd.setDate(priorEnd.getDate() + 1)
+    const yStr = shiftDays(todayStr, -1)
+    const yStart = midnightUTC(yStr, tz)
+    const priorStr = shiftDays(yStr, -7)
+    const priorStart = midnightUTC(priorStr, tz)
+    const priorEnd = midnightUTC(shiftDays(priorStr, 1), tz)
     return {
       periodStart: yStart, periodEnd: todayStart,
       priorStart, priorEnd,
-      priorLabel: `Last ${DAY_NAMES[priorStart.getDay()]}`,
+      priorLabel: `Last ${weekdayName(priorStr, tz)}`,
     }
   }
 
-  // this_week: Monday 00:00 to now, vs prior week Mon–same day
-  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1
-  const weekStart = new Date(todayStart)
-  weekStart.setDate(weekStart.getDate() - dow)
-  const priorWeekStart = new Date(weekStart)
-  priorWeekStart.setDate(priorWeekStart.getDate() - 7)
+  // this_week: Monday 00:00 to now vs prior week Mon–same weekday
+  const dow = dayOfWeekInTz(todayStr, tz) // 0=Sun … 6=Sat
+  const daysFromMonday = dow === 0 ? 6 : dow - 1
+  const weekStartStr = shiftDays(todayStr, -daysFromMonday)
+  const weekStart = midnightUTC(weekStartStr, tz)
+  const priorWeekStart = midnightUTC(shiftDays(weekStartStr, -7), tz)
   return {
     periodStart: weekStart, periodEnd: now,
     priorStart: priorWeekStart, priorEnd: weekStart,
@@ -54,24 +50,23 @@ function getPeriodBounds(period: Period): {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const ctx = await getRestaurantContext()
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const period = (searchParams.get('period') ?? 'today') as Period
 
   const admin = createAdminClient()
-
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id, name, daily_revenue_target')
-    .eq('owner_user_id', user.id)
+    .select('id, name, slug, timezone, daily_revenue_target')
+    .eq('id', ctx.restaurantId)
     .single()
 
   if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
 
-  const { periodStart, periodEnd, priorStart, priorEnd, priorLabel } = getPeriodBounds(period)
+  const tz = restaurant.timezone ?? 'America/New_York'
+  const { periodStart, periodEnd, priorStart, priorEnd, priorLabel } = getPeriodBounds(period, tz)
 
   const { data: overview, error } = await admin.rpc('get_dashboard_overview', {
     p_restaurant_id: restaurant.id,
@@ -87,6 +82,7 @@ export async function GET(request: Request) {
     restaurant: {
       id: restaurant.id,
       name: restaurant.name,
+      slug: restaurant.slug,
       daily_revenue_target: restaurant.daily_revenue_target ?? null,
     },
     period,
@@ -109,11 +105,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'daily_revenue_target must be a number or null' }, { status: 400 })
   }
 
+  const ctx = await getRestaurantContext()
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const admin = createAdminClient()
   const { error } = await admin
     .from('restaurants')
     .update({ daily_revenue_target })
-    .eq('owner_user_id', user.id)
+    .eq('id', ctx.restaurantId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

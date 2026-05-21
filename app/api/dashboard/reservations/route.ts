@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getRestaurantContext } from '@/lib/utils/restaurant-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { todayInTz, shiftDays } from '@/lib/utils/timezone'
 
 export async function GET() {
   const ctx = await getRestaurantContext()
@@ -8,13 +9,18 @@ export async function GET() {
 
   const admin = createAdminClient()
 
-  const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const { data: restaurant } = await admin
+    .from('restaurants')
+    .select('id, timezone')
+    .eq('id', ctx.restaurantId)
+    .single()
 
-  // End of 7-day window
-  const weekEnd = new Date(now)
-  weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekEndStr = weekEnd.toISOString().slice(0, 10)
+  if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
+
+  const tz = restaurant.timezone ?? 'America/New_York'
+  const now = new Date()
+  const todayStr = todayInTz(tz, now)
+  const weekEndStr = shiftDays(todayStr, 6)
 
   const { data: reservations, error } = await admin
     .from('reservations')
@@ -30,16 +36,13 @@ export async function GET() {
 
   const all = reservations ?? []
   const today = all.filter(r => r.reservation_date === todayStr)
-  const week = all // already filtered gte today
 
   // Day-by-day summary for next 7 days
   const dayMap: Record<string, { count: number; covers: number }> = {}
   for (let i = 0; i <= 6; i++) {
-    const d = new Date(now)
-    d.setDate(d.getDate() + i)
-    dayMap[d.toISOString().slice(0, 10)] = { count: 0, covers: 0 }
+    dayMap[shiftDays(todayStr, i)] = { count: 0, covers: 0 }
   }
-  for (const r of week) {
+  for (const r of all) {
     if (dayMap[r.reservation_date]) {
       dayMap[r.reservation_date].count++
       dayMap[r.reservation_date].covers += r.party_size
@@ -47,16 +50,17 @@ export async function GET() {
   }
   const next_7_days = Object.entries(dayMap).map(([date, v]) => ({ date, ...v }))
 
-  const stats = {
-    today_total: today.length,
-    today_confirmed: today.filter(r => r.status === 'confirmed').length,
-    today_pending: today.filter(r => r.status === 'pending').length,
-    today_no_show: today.filter(r => r.status === 'no_show').length,
-    today_covers: today.reduce((s, r) => s + r.party_size, 0),
-    this_week_total: week.length,
-    this_week_covers: week.reduce((s, r) => s + r.party_size, 0),
-    next_7_days,
-  }
-
-  return NextResponse.json({ today, stats })
+  return NextResponse.json({
+    today,
+    stats: {
+      today_total: today.length,
+      today_confirmed: today.filter(r => r.status === 'confirmed').length,
+      today_pending: today.filter(r => r.status === 'pending').length,
+      today_no_show: today.filter(r => r.status === 'no_show').length,
+      today_covers: today.reduce((s, r) => s + r.party_size, 0),
+      this_week_total: all.length,
+      this_week_covers: all.reduce((s, r) => s + r.party_size, 0),
+      next_7_days,
+    },
+  })
 }

@@ -32,7 +32,7 @@ interface QueueOrder {
 }
 
 interface OverviewData {
-  restaurant: { id: string; name: string; daily_revenue_target: number | null }
+  restaurant: { id: string; name: string; slug: string; daily_revenue_target: number | null }
   period: Period
   prior_label: string
   period_start: string
@@ -434,7 +434,7 @@ export default function DashboardPage() {
             ))}
           </div>
           <Link
-            href={`/restaurant/${restaurant?.id ?? '#'}`}
+            href={`/restaurant/${restaurant?.slug ?? '#'}`}
             target="_blank"
             className="text-xs text-orange-500 border border-orange-200 px-3 py-1.5 rounded-xl hover:bg-orange-50 transition"
           >

@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getRestaurantContext } from '@/lib/utils/restaurant-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { startOfToday } from '@/lib/utils/timezone'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const ctx = await getRestaurantContext()
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
 
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('id')
-    .eq('owner_user_id', user.id)
+    .select('id, timezone')
+    .eq('id', ctx.restaurantId)
     .single()
 
   if (!restaurant) return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
 
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  const tz = restaurant.timezone ?? 'America/New_York'
+  const todayStart = startOfToday(tz)
 
   const { data, error } = await admin
     .from('orders')
