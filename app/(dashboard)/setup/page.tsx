@@ -12,7 +12,8 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X } from 'lucide-react'
+import Image from 'next/image'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
 
@@ -50,9 +51,14 @@ function SetupContent() {
   const [loading, setLoading] = useState(false)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [hours, setHours] = useState(defaultHours())
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState('')
   const [form, setForm] = useState({
     name: '', slug: '', address: '', phone: '', email: '', website: '',
     description: '', timezone: 'America/New_York',
+    logo_url: '', cover_image_url: '',
     online_ordering_enabled: true, pickup_enabled: true,
     dine_in_enabled: false, delivery_enabled: false,
     tax_rate: 0,
@@ -77,6 +83,7 @@ function SetupContent() {
           name: r.name, slug: r.slug, address: r.address ?? '',
           phone: r.phone ?? '', email: r.email ?? '', website: r.website ?? '',
           description: r.description ?? '', timezone: r.timezone,
+          logo_url: r.logo_url ?? '', cover_image_url: r.cover_image_url ?? '',
           online_ordering_enabled: r.online_ordering_enabled,
           pickup_enabled: r.pickup_enabled, dine_in_enabled: r.dine_in_enabled,
           delivery_enabled: r.delivery_enabled,
@@ -110,6 +117,14 @@ function SetupContent() {
     setHours(h => h.map(r => r.day_of_week === day ? { ...r, [field]: value } : r))
   }
 
+  async function uploadRestaurantImage(file: File, type: 'logo' | 'cover', restaurantId: string): Promise<string | null> {
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `${restaurantId}/${type}.${ext}`
+    const { error } = await supabase.storage.from('restaurant-images').upload(path, file, { upsert: true })
+    if (error) { toast(`Image upload failed: ${error.message}`, 'error'); return null }
+    return supabase.storage.from('restaurant-images').getPublicUrl(path).data.publicUrl
+  }
+
   async function handleSave() {
     if (!form.name.trim()) { toast('Restaurant name is required', 'error'); return }
     setLoading(true)
@@ -118,25 +133,38 @@ function SetupContent() {
     if (!user) return
 
     let restaurantId = restaurant?.id
+    let logoUrl = form.logo_url || null
+    let coverUrl = form.cover_image_url || null
 
     if (restaurant) {
+      // Upload any pending images first (restaurantId is known)
+      if (logoFile) { const u = await uploadRestaurantImage(logoFile, 'logo', restaurantId!); if (u) logoUrl = u }
+      if (coverFile) { const u = await uploadRestaurantImage(coverFile, 'cover', restaurantId!); if (u) coverUrl = u }
+
       const { error } = await supabase.from('restaurants').update({
-        ...form, updated_at: new Date().toISOString(),
+        ...form, logo_url: logoUrl, cover_image_url: coverUrl, updated_at: new Date().toISOString(),
       }).eq('id', restaurant.id)
       if (error) { toast(error.message, 'error'); setLoading(false); return }
     } else {
+      // Create restaurant first (no images yet)
       const { data, error } = await supabase.from('restaurants').insert({
-        ...form, owner_user_id: user.id, is_active: true,
+        ...form, logo_url: null, cover_image_url: null, owner_user_id: user.id, is_active: true,
       }).select().single()
       if (error) { toast(error.message, 'error'); setLoading(false); return }
       restaurantId = data.id
       setRestaurant(data)
 
-      // Save hours then select the new restaurant and go to its dashboard
+      // Now upload images with the new restaurantId
+      if (logoFile) { const u = await uploadRestaurantImage(logoFile, 'logo', restaurantId!); if (u) logoUrl = u }
+      if (coverFile) { const u = await uploadRestaurantImage(coverFile, 'cover', restaurantId!); if (u) coverUrl = u }
+      if (logoUrl || coverUrl) {
+        await supabase.from('restaurants').update({ logo_url: logoUrl, cover_image_url: coverUrl }).eq('id', restaurantId!)
+      }
+
+      // Save hours then redirect to the new restaurant dashboard
       if (restaurantId) {
         await supabase.from('restaurant_hours').delete().eq('restaurant_id', restaurantId)
-        const hoursToInsert = hours.map(h => ({ ...h, restaurant_id: restaurantId! }))
-        await supabase.from('restaurant_hours').insert(hoursToInsert)
+        await supabase.from('restaurant_hours').insert(hours.map(h => ({ ...h, restaurant_id: restaurantId! })))
       }
       toast('Restaurant created! Opening dashboard…', 'success')
       setLoading(false)
@@ -147,9 +175,13 @@ function SetupContent() {
     // Save hours (edit mode)
     if (restaurantId) {
       await supabase.from('restaurant_hours').delete().eq('restaurant_id', restaurantId)
-      const hoursToInsert = hours.map(h => ({ ...h, restaurant_id: restaurantId! }))
-      await supabase.from('restaurant_hours').insert(hoursToInsert)
+      await supabase.from('restaurant_hours').insert(hours.map(h => ({ ...h, restaurant_id: restaurantId! })))
     }
+
+    // Sync local state with saved URLs and clear pending files
+    setForm(f => ({ ...f, logo_url: logoUrl ?? '', cover_image_url: coverUrl ?? '' }))
+    setLogoFile(null); setLogoPreview('')
+    setCoverFile(null); setCoverPreview('')
 
     toast('Restaurant saved successfully!', 'success')
     setLoading(false)
@@ -170,6 +202,137 @@ function SetupContent() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Basic Info */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Restaurant Photos */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <ImageIcon size={17} className="text-orange-500" /> Restaurant Photos
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">These images appear on your public customer ordering page.</p>
+
+            {/* Live preview */}
+            <div className="relative rounded-2xl overflow-hidden bg-gray-100 mb-5 border border-gray-100">
+              {/* Cover banner */}
+              <div className="relative h-32">
+                {(coverPreview || form.cover_image_url) ? (
+                  <Image src={coverPreview || form.cover_image_url} alt="Cover preview" fill className="object-cover" />
+                ) : (
+                  <div className="h-full bg-gradient-to-br from-orange-100 via-amber-50 to-orange-50 flex items-center justify-center">
+                    <span className="text-xs text-gray-400 font-medium">Cover photo will appear here</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              </div>
+              {/* Logo + name overlaid */}
+              <div className="absolute bottom-3 left-3 flex items-end gap-2">
+                <div className="w-10 h-10 rounded-xl border-2 border-white/40 shadow-lg bg-white overflow-hidden shrink-0">
+                  {(logoPreview || form.logo_url) ? (
+                    <Image src={logoPreview || form.logo_url} alt="Logo preview" width={40} height={40} className="object-cover w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full bg-orange-50 flex items-center justify-center text-base">🍣</div>
+                  )}
+                </div>
+                <span className="text-white text-xs font-bold drop-shadow">{form.name || 'Restaurant Name'}</span>
+              </div>
+              <div className="absolute top-2 right-2 bg-black/30 backdrop-blur-sm rounded-full px-2 py-0.5">
+                <span className="text-white text-[10px] font-bold">Preview</span>
+              </div>
+            </div>
+
+            {/* Upload controls */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              {/* Cover photo */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Cover Photo</p>
+                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-orange-300 transition group cursor-pointer bg-gray-50">
+                  {(coverPreview || form.cover_image_url) ? (
+                    <Image src={coverPreview || form.cover_image_url} alt="Cover" fill className="object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-1.5 text-gray-400">
+                      <ImageIcon size={20} className="opacity-50" />
+                      <span className="text-xs font-medium">Click to upload</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition flex items-center justify-center">
+                    <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 bg-black/50 px-2.5 py-1 rounded-lg transition">
+                      {(coverPreview || form.cover_image_url) ? 'Change' : 'Upload'}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={e => {
+                      const file = e.target.files?.[0] ?? null
+                      setCoverFile(file)
+                      setCoverPreview(file ? URL.createObjectURL(file) : '')
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <p className="text-[10px] text-gray-400">Recommended: 1200×400px</p>
+                  {(coverPreview || form.cover_image_url) && (
+                    <button
+                      type="button"
+                      onClick={() => { setCoverFile(null); setCoverPreview(''); setForm(f => ({ ...f, cover_image_url: '' })) }}
+                      className="flex items-center gap-0.5 text-[11px] text-red-400 hover:text-red-600 transition"
+                    >
+                      <X size={11} /> Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Logo */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Restaurant Logo</p>
+                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-orange-300 transition group cursor-pointer bg-gray-50">
+                  {(logoPreview || form.logo_url) ? (
+                    <Image src={logoPreview || form.logo_url} alt="Logo" fill className="object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-1.5 text-gray-400">
+                      <ImageIcon size={20} className="opacity-50" />
+                      <span className="text-xs font-medium">Click to upload</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition flex items-center justify-center">
+                    <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 bg-black/50 px-2.5 py-1 rounded-lg transition">
+                      {(logoPreview || form.logo_url) ? 'Change' : 'Upload'}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={e => {
+                      const file = e.target.files?.[0] ?? null
+                      setLogoFile(file)
+                      setLogoPreview(file ? URL.createObjectURL(file) : '')
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <p className="text-[10px] text-gray-400">Recommended: 400×400px square</p>
+                  {(logoPreview || form.logo_url) && (
+                    <button
+                      type="button"
+                      onClick={() => { setLogoFile(null); setLogoPreview(''); setForm(f => ({ ...f, logo_url: '' })) }}
+                      className="flex items-center gap-0.5 text-[11px] text-red-400 hover:text-red-600 transition"
+                    >
+                      <X size={11} /> Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {(logoFile || coverFile) && (
+              <p className="text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mt-4">
+                You have unsaved photo changes — click <strong>Save Changes</strong> above to upload them.
+              </p>
+            )}
+          </div>
+
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-900 mb-5">Basic Information</h3>
             <div className="grid gap-4">

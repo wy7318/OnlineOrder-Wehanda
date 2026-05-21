@@ -74,17 +74,11 @@ export default function NotificationBell() {
 
   const unread = notifications.filter((n) => !n.read).length
 
-  // Resolve restaurant id once
+  // Resolve restaurant id once (respects selected_restaurant_id cookie)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase
-        .from('restaurants')
-        .select('id')
-        .eq('owner_user_id', user.id)
-        .single()
-        .then(({ data }) => { if (data) setRestaurantId(data.id) })
-    })
+    fetch('/api/restaurant/current')
+      .then(res => res.ok ? res.json() : null)
+      .then(r => { if (r?.id) setRestaurantId(r.id) })
   }, [])
 
   // ── Orders subscription ──────────────────────────────────

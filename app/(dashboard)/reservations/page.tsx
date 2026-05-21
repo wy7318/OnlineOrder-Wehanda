@@ -51,14 +51,10 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: r } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('owner_user_id', user.id)
-        .single()
-      if (r) {
+      const res = await fetch('/api/restaurant/current')
+      if (!res.ok) return
+      const r = await res.json()
+      if (r?.id) {
         setRestaurantId(r.id)
         setSelectedDate(todayStr)
       }

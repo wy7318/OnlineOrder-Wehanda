@@ -100,10 +100,10 @@ export default function OrdersPage() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: r } = await supabase.from('restaurants').select('id').eq('owner_user_id', user.id).single()
-      if (!r) return
+      const res = await fetch('/api/restaurant/current')
+      if (!res.ok) return
+      const r = await res.json()
+      if (!r?.id) return
       setRestaurantId(r.id)
       const { data } = await supabase
         .from('orders')

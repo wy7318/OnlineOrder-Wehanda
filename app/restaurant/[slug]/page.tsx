@@ -6,7 +6,7 @@ import { useCartStore } from '@/store/cart'
 import { isRestaurantOpen } from '@/lib/utils/hours'
 import { formatCurrency } from '@/lib/utils/helpers'
 import Image from 'next/image'
-import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Package } from 'lucide-react'
+import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Package, Plus } from 'lucide-react'
 import ItemModal from '@/components/customer/ItemModal'
 import Cart from '@/components/customer/Cart'
 import ReservationModal from '@/components/customer/ReservationModal'
@@ -232,16 +232,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-gray-400 font-medium">Loading menu…</p>
+      </div>
     </div>
   )
 
   if (notFound) return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center p-8">
-      <div className="text-6xl mb-4">🍽️</div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Restaurant not found</h1>
-      <p className="text-gray-500">This restaurant page doesn&apos;t exist or is not available.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-gray-50">
+      <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mb-5 text-4xl">🍽️</div>
+      <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Restaurant not found</h1>
+      <p className="text-gray-500 max-w-xs">This restaurant page doesn&apos;t exist or isn&apos;t available right now.</p>
     </div>
   )
 
@@ -253,41 +256,46 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Order Confirmation Overlay */}
+
+      {/* ── Order Confirmation ── */}
       {orderConfirmed && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
-            <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Placed!</h2>
-            <p className="text-gray-500 mb-2">Your order has been received.</p>
-            <div className="bg-orange-50 rounded-xl p-4 my-4">
-              <p className="text-xs text-orange-600 font-medium">Order Number</p>
-              <p className="text-xl font-bold text-orange-500">{orderConfirmed.orderNumber}</p>
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <span className="text-green-600 text-3xl leading-none">✓</span>
             </div>
-            <p className="text-sm text-gray-500 mb-6">Payment: Pay at restaurant</p>
-            <button onClick={() => setOrderConfirmed(null)}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Order Placed!</h2>
+            <p className="text-gray-500 text-sm mb-5">Your order has been received by the restaurant.</p>
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl py-4 px-6 mb-5">
+              <p className="text-xs text-orange-500 font-bold uppercase tracking-widest mb-1">Order Number</p>
+              <p className="text-3xl font-extrabold text-orange-500">#{orderConfirmed.orderNumber}</p>
+            </div>
+            <p className="text-xs text-gray-400 mb-6">💳 Pay at the restaurant — card or cash accepted</p>
+            <button
+              onClick={() => setOrderConfirmed(null)}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl transition"
+            >
               Continue Browsing
             </button>
           </div>
         </div>
       )}
 
-      {/* Hero / Header */}
+      {/* ── Hero ── */}
       <div className="relative">
-        {/* Customer auth controls — top-right corner */}
-        <div className="absolute top-3 right-4 z-10 flex items-center gap-2">
+        {/* Auth controls */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           {customerSession ? (
             <>
               <button
                 onClick={() => setOrderHistoryOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 bg-black/35 backdrop-blur-sm text-white rounded-xl text-sm font-semibold hover:bg-black/55 transition"
               >
                 <Package size={14} /> My Orders
               </button>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-medium text-gray-500 hover:bg-white transition shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 bg-black/35 backdrop-blur-sm text-white rounded-xl text-sm font-semibold hover:bg-black/55 transition"
               >
                 <User size={14} /> {customerProfile?.display_name?.split(' ')[0] ?? 'Account'}
               </button>
@@ -295,142 +303,169 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
           ) : (
             <button
               onClick={() => setAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl text-sm font-semibold text-orange-500 hover:bg-white transition shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 bg-black/35 backdrop-blur-sm text-white rounded-xl text-sm font-bold hover:bg-black/55 transition"
             >
               <User size={14} /> Sign in
             </button>
           )}
         </div>
 
-        {restaurant.cover_image_url ? (
-          <div className="relative h-56 md:h-72">
-            <Image src={restaurant.cover_image_url} alt={restaurant.name} fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          </div>
-        ) : (
-          <div className="h-40 bg-gradient-to-r from-orange-400 to-amber-500" />
-        )}
+        {/* Cover image with gradient + restaurant info overlaid */}
+        <div className="relative h-64 md:h-80">
+          {restaurant.cover_image_url ? (
+            <>
+              <Image src={restaurant.cover_image_url} alt={restaurant.name} fill className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            </>
+          ) : (
+            <div className="h-full bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500" />
+          )}
 
-        <div className="max-w-6xl mx-auto px-4 relative">
-          <div className="flex items-end gap-4 -mt-12 md:-mt-16 pb-6">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden shrink-0">
+          {/* Restaurant info overlay */}
+          <div className="absolute bottom-0 left-0 right-0 px-4 md:px-8 pb-6 flex items-end gap-3">
+            <div className="w-[60px] h-[60px] md:w-[72px] md:h-[72px] rounded-2xl border-2 border-white/30 shadow-2xl bg-white overflow-hidden shrink-0">
               {restaurant.logo_url ? (
-                <Image src={restaurant.logo_url} alt={restaurant.name} width={128} height={128} className="object-cover w-full h-full" />
+                <Image src={restaurant.logo_url} alt={restaurant.name} width={72} height={72} className="object-cover w-full h-full" />
               ) : (
-                <div className="w-full h-full bg-orange-100 flex items-center justify-center text-4xl">🍣</div>
+                <div className="w-full h-full bg-orange-50 flex items-center justify-center text-2xl">🍣</div>
               )}
             </div>
-            <div className="pb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{restaurant.name}</h1>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                  {isOpen ? '● Open' : '● Closed'}
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">{restaurant.name}</h1>
+                <span className={`inline-flex items-center gap-1 shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full bg-white ${isOpen ? 'animate-pulse' : ''}`} />
+                  {isOpen ? 'Open' : 'Closed'}
                 </span>
               </div>
-              {restaurant.address && (
-                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                  <MapPin size={13} /> {restaurant.address}
-                </p>
-              )}
-              {restaurant.phone && (
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <Phone size={13} /> {restaurant.phone}
-                </p>
-              )}
-              {restaurant.reservations_enabled && (
-                <button
-                  onClick={() => setReservationOpen(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl shadow-sm transition"
-                >
-                  <CalendarDays size={15} /> Reserve a Table
-                </button>
-              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                {restaurant.address && (
+                  <span className="text-white/70 text-xs flex items-center gap-1"><MapPin size={11} /> {restaurant.address}</span>
+                )}
+                {restaurant.phone && (
+                  <span className="text-white/70 text-xs flex items-center gap-1"><Phone size={11} /> {restaurant.phone}</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Closed Banner */}
-      {!isOpen && (
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center gap-2 mb-4">
-            <Clock size={16} /> Online ordering is currently unavailable (restaurant is closed)
-          </div>
+      {/* ── Action bar ── */}
+      <div className="bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap min-h-[52px]">
+          {!isOpen && (
+            <div className="flex items-center gap-1.5 text-red-600 text-sm font-semibold">
+              <Clock size={14} /> Ordering unavailable — restaurant is closed
+            </div>
+          )}
+          {!restaurant.online_ordering_enabled && (
+            <div className="text-amber-600 text-sm font-semibold flex items-center gap-1.5">
+              <Clock size={14} /> Online ordering is currently disabled
+            </div>
+          )}
+          {restaurant.reservations_enabled && (
+            <button
+              onClick={() => setReservationOpen(true)}
+              className="ml-auto flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition shadow-sm"
+            >
+              <CalendarDays size={15} /> Reserve a Table
+            </button>
+          )}
         </div>
-      )}
-      {!restaurant.online_ordering_enabled && (
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl px-4 py-3 text-sm mb-4">
-            Online ordering is currently disabled for this restaurant.
+      </div>
+
+      {/* ── Sticky Category Nav ── */}
+      {restaurant.categories.length > 0 && !search.trim() && (
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-3">
+              {restaurant.categories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setActiveCategory(cat.id); categoryRefs.current[cat.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition whitespace-nowrap ${
+                    activeCategory === cat.id
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 pb-32">
+      {/* ── Main content ── */}
+      <div className="max-w-6xl mx-auto px-4 pt-6 pb-32">
         {/* Search */}
-        <div className="relative my-4">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search menu items…"
-            className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-orange-400 shadow-sm" />
+        <div className="relative mb-6">
+          <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search the menu…"
+            className="w-full pl-11 pr-10 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-orange-400 shadow-sm transition"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
+              <X size={15} />
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-6 items-start">
-          {/* Main Content */}
+        <div className="flex gap-8 items-start">
+          {/* Menu sections */}
           <div className="flex-1 min-w-0">
-            {/* Category Nav */}
-            {!search.trim() && (
-              <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-                {restaurant.categories.map(cat => (
-                  <button key={cat.id}
-                    onClick={() => { setActiveCategory(cat.id); categoryRefs.current[cat.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
-                    className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition ${activeCategory === cat.id ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-orange-300'}`}>
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Menu Items */}
             {search.trim() ? (
               <div>
-                <p className="text-sm text-gray-500 mb-4">{displayItems.length} results for &ldquo;{search}&rdquo;</p>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {displayItems.map(item => (
-                    <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-                  ))}
-                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  {displayItems.length} result{displayItems.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
+                </p>
+                {displayItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {displayItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                      <Search size={24} className="text-gray-400" />
+                    </div>
+                    <p className="font-bold text-gray-700 mb-1">No items found</p>
+                    <p className="text-sm text-gray-400">Try searching something else</p>
+                  </div>
+                )}
               </div>
             ) : (
               restaurant.categories.map(cat => {
                 const catItems = filteredItems(cat.id)
                 if (catItems.length === 0) return null
                 return (
-                  <div key={cat.id} ref={el => { categoryRefs.current[cat.id] = el }} className="mb-10">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      {cat.name}
-                      <span className="text-sm font-normal text-gray-400">{catItems.length} items</span>
-                    </h2>
+                  <div key={cat.id} ref={el => { categoryRefs.current[cat.id] = el }} className="mb-10 scroll-mt-16">
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <h2 className="text-lg font-extrabold text-gray-900">{cat.name}</h2>
+                      <span className="text-sm text-gray-400">{catItems.length} items</span>
+                    </div>
                     {cat.subcategories.length > 0 ? (
                       cat.subcategories.map(sub => {
                         const subItems = filteredItems(cat.id, sub.id)
                         if (subItems.length === 0) return null
                         return (
                           <div key={sub.id} className="mb-6">
-                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{sub.name}</h3>
-                            <div className="grid sm:grid-cols-2 gap-4">
-                              {subItems.map(item => (
-                                <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-                              ))}
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">{sub.name}</p>
+                            <div className="space-y-3">
+                              {subItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
                             </div>
                           </div>
                         )
                       })
                     ) : (
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {catItems.filter(i => !i.subcategory_id).map(item => (
-                          <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-                        ))}
+                      <div className="space-y-3">
+                        {catItems.filter(i => !i.subcategory_id).map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
                       </div>
                     )}
                   </div>
@@ -439,253 +474,226 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
             )}
           </div>
 
-          {/* Desktop Cart */}
-          <div className="hidden lg:block w-80 shrink-0 sticky top-6">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <ShoppingBag size={18} className="text-orange-500" /> Your Order
-                {itemCount > 0 && <span className="ml-auto bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{itemCount}</span>}
-              </h2>
-              <Cart taxRate={taxRate} onCheckout={() => setCheckoutOpen(true)} />
+          {/* Desktop Cart Sidebar */}
+          <div className="hidden lg:block w-80 shrink-0 sticky top-[57px]">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                <ShoppingBag size={18} className="text-orange-500" />
+                <h2 className="font-extrabold text-gray-900">Your Order</h2>
+                {itemCount > 0 && (
+                  <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{itemCount}</span>
+                )}
+              </div>
+              <div className="p-5">
+                <Cart taxRate={taxRate} onCheckout={() => setCheckoutOpen(true)} />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Cart Button */}
+      {/* ── Mobile floating cart ── */}
       {itemCount > 0 && (
         <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40">
-          <button onClick={() => setCartOpen(true)}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-between px-6 shadow-2xl shadow-orange-300 transition">
-            <span className="flex items-center gap-2"><ShoppingBag size={20} /> {itemCount} item{itemCount > 1 ? 's' : ''}</span>
-            <span>{formatCurrency(subtotal)}</span>
+          <button
+            onClick={() => setCartOpen(true)}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl flex items-center justify-between px-5 shadow-2xl shadow-orange-300/40 transition"
+          >
+            <div className="flex items-center gap-3">
+              <span className="bg-white/20 text-white text-xs font-extrabold w-6 h-6 rounded-lg flex items-center justify-center">{itemCount}</span>
+              <span className="text-sm font-bold">View Order</span>
+            </div>
+            <span className="font-extrabold">{formatCurrency(subtotal)}</span>
           </button>
         </div>
       )}
 
-      {/* Mobile Cart Drawer */}
+      {/* ── Mobile Cart Drawer ── */}
       {cartOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCartOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-lg">Your Order</h2>
-              <button onClick={() => setCartOpen(false)}><X size={22} className="text-gray-400" /></button>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="font-extrabold text-gray-900 text-lg">Your Order</h2>
+              <button onClick={() => setCartOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-6">
               <Cart taxRate={taxRate} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true) }} />
             </div>
           </div>
         </div>
       )}
 
-      {/* Item Modal */}
-      {selectedItem && (
-        <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />
-      )}
+      {/* ── Item Modal ── */}
+      {selectedItem && <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />}
 
-      {/* Reservation Modal */}
+      {/* ── Reservation Modal ── */}
       {reservationOpen && restaurant.reservations_enabled && (
         <ReservationModal
           restaurant={restaurant}
           onClose={() => setReservationOpen(false)}
-          prefill={{
-            name: customerProfile?.display_name,
-            phone: customerProfile?.phone,
-            email: customerSession?.user?.email ?? undefined,
-          }}
+          prefill={{ name: customerProfile?.display_name, phone: customerProfile?.phone, email: customerSession?.user?.email ?? undefined }}
           customerUserId={customerSession?.user?.id ?? null}
         />
       )}
 
-      {/* Customer Auth Modal */}
-      {authModalOpen && (
-        <CustomerAuthModal restaurantSlug={slug} onClose={() => setAuthModalOpen(false)} />
-      )}
+      {/* ── Auth Modal ── */}
+      {authModalOpen && <CustomerAuthModal restaurantSlug={slug} onClose={() => setAuthModalOpen(false)} />}
 
-      {/* Customer Profile Completion Modal */}
+      {/* ── Profile Modal ── */}
       {profileModalOpen && customerSession && (
         <CustomerProfileModal
           email={customerSession.user.email ?? ''}
           onSaved={profile => {
             setCustomerProfile(profile)
             setProfileModalOpen(false)
-            setCheckoutForm(f => ({
-              ...f,
-              name: profile.display_name,
-              phone: profile.phone,
-              email: customerSession.user.email ?? f.email,
-            }))
+            setCheckoutForm(f => ({ ...f, name: profile.display_name, phone: profile.phone, email: customerSession.user.email ?? f.email }))
           }}
         />
       )}
 
-      {/* Order History Slide-over */}
-      {orderHistoryOpen && restaurant && (
-        <OrderHistory restaurantId={restaurant.id} onClose={() => setOrderHistoryOpen(false)} />
-      )}
+      {/* ── Order History ── */}
+      {orderHistoryOpen && restaurant && <OrderHistory restaurantId={restaurant.id} onClose={() => setOrderHistoryOpen(false)} />}
 
-      {/* Checkout Modal */}
+      {/* ── Checkout Modal ── */}
       {checkoutOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCheckoutOpen(false)} />
-          <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCheckoutOpen(false)} />
+          <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-              <h2 className="text-lg font-bold text-gray-900">Checkout</h2>
-              <button onClick={() => setCheckoutOpen(false)}><X size={20} className="text-gray-400" /></button>
+              <h2 className="text-lg font-extrabold text-gray-900">Checkout</h2>
+              <button onClick={() => setCheckoutOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={20} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              {/* Order Type */}
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Order Type</p>
-                <div className="flex gap-2">
-                  {restaurant.pickup_enabled && (
-                    <button onClick={() => setOrderType('pickup')}
-                      className={`flex-1 py-2 rounded-xl border text-sm font-medium transition ${orderType === 'pickup' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
-                      Pickup
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-6">
+                {/* Order Type */}
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-3">How are you ordering?</p>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${[restaurant.pickup_enabled, restaurant.dine_in_enabled, restaurant.delivery_enabled].filter(Boolean).length}, 1fr)` }}>
+                    {restaurant.pickup_enabled && (
+                      <button onClick={() => setOrderType('pickup')}
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'pickup' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        <span className="text-xl">🏃</span> Pickup
+                      </button>
+                    )}
+                    {restaurant.dine_in_enabled && (
+                      <button onClick={() => setOrderType('dine_in')}
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'dine_in' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        <span className="text-xl">🍽️</span> Dine In
+                      </button>
+                    )}
+                    {restaurant.delivery_enabled && (
+                      <button onClick={() => setOrderType('delivery')}
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'delivery' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        <span className="text-xl">🚗</span> Delivery
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Customer Info */}
+                <div className="space-y-2.5">
+                  <p className="text-sm font-bold text-gray-700">Your Information</p>
+                  <input value={checkoutForm.name} onChange={e => setCheckoutForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Full Name *" required
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                  <input value={checkoutForm.phone} onChange={e => setCheckoutForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="Phone Number *" required type="tel"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                  <input value={checkoutForm.email} onChange={e => setCheckoutForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="Email (optional)" type="email"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                </div>
+
+                {/* Delivery address */}
+                {orderType === 'delivery' && (
+                  <div className="space-y-2.5">
+                    <p className="text-sm font-bold text-gray-700">Delivery Address</p>
+                    <input value={checkoutForm.delivery_address} onChange={e => setCheckoutForm(f => ({ ...f, delivery_address: e.target.value }))}
+                      placeholder="Street Address *" required
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                    <input value={checkoutForm.delivery_instructions} onChange={e => setCheckoutForm(f => ({ ...f, delivery_instructions: e.target.value }))}
+                      placeholder="Delivery instructions (optional)"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-2">Special Instructions</p>
+                  <textarea value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Allergies, special requests…" rows={2}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 resize-none transition" />
+                </div>
+
+                {/* Utensils */}
+                <label className="flex items-center justify-between gap-3 cursor-pointer bg-gray-50 hover:bg-gray-100 transition rounded-2xl px-4 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                      <Utensils size={16} className="text-gray-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">Include utensils</p>
+                      <p className="text-xs text-gray-400">Chopsticks, fork &amp; napkins</p>
+                    </div>
+                  </div>
+                  <div className="relative shrink-0">
+                    <input type="checkbox" className="sr-only peer" checked={wantsUtensils} onChange={e => setWantsUtensils(e.target.checked)} />
+                    <div className="w-11 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow" />
+                  </div>
+                </label>
+
+                {/* Tip */}
+                <div>
+                  <p className="text-sm font-bold text-gray-700 mb-3">Add a Tip</p>
+                  <div className="flex flex-wrap gap-2">
+                    {TIP_PRESETS.map(pct => (
+                      <button key={pct} type="button" onClick={() => { setTipPercent(pct); setCustomTip('') }}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === pct ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        {pct === 0 ? 'No tip' : `${pct}%`}
+                        {pct > 0 && tipPercent === pct && subtotal > 0 && (
+                          <span className="ml-1 text-orange-200 text-xs">{formatCurrency(Math.round(subtotal * pct) / 100)}</span>
+                        )}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setTipPercent(-1)}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === -1 ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      Custom
                     </button>
-                  )}
-                  {restaurant.dine_in_enabled && (
-                    <button onClick={() => setOrderType('dine_in')}
-                      className={`flex-1 py-2 rounded-xl border text-sm font-medium transition ${orderType === 'dine_in' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
-                      Dine-In
-                    </button>
-                  )}
-                  {restaurant.delivery_enabled && (
-                    <button onClick={() => setOrderType('delivery')}
-                      className={`flex-1 py-2 rounded-xl border text-sm font-medium transition ${orderType === 'delivery' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
-                      Delivery
-                    </button>
+                  </div>
+                  {tipPercent === -1 && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className="text-sm font-medium text-gray-500">$</span>
+                      <input type="number" min="0" step="0.50" value={customTip} onChange={e => setCustomTip(e.target.value)} placeholder="0.00"
+                        className="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* Customer Info */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">Your Information</p>
-                <input value={checkoutForm.name} onChange={e => setCheckoutForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Full Name *" required
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400" />
-                <input value={checkoutForm.phone} onChange={e => setCheckoutForm(f => ({ ...f, phone: e.target.value }))}
-                  placeholder="Phone Number *" required type="tel"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400" />
-                <input value={checkoutForm.email} onChange={e => setCheckoutForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="Email (optional)" type="email"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400" />
-              </div>
-
-              {/* Delivery Address */}
-              {orderType === 'delivery' && (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">Delivery Address</p>
-                  <input value={checkoutForm.delivery_address} onChange={e => setCheckoutForm(f => ({ ...f, delivery_address: e.target.value }))}
-                    placeholder="Street Address *" required
-                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400" />
-                  <input value={checkoutForm.delivery_instructions} onChange={e => setCheckoutForm(f => ({ ...f, delivery_instructions: e.target.value }))}
-                    placeholder="Delivery instructions (optional)"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400" />
-                </div>
-              )}
-
-              {/* Order Notes */}
-              <textarea value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Special instructions (optional)" rows={2}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 resize-none" />
-
-              {/* Utensils */}
-              <label className="flex items-center justify-between gap-3 cursor-pointer bg-gray-50 hover:bg-gray-100 transition rounded-xl px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Utensils size={16} className="text-gray-400 shrink-0" />
+                {/* Payment note */}
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5 flex items-center gap-3">
+                  <span className="text-xl">💳</span>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Include utensils</p>
-                    <p className="text-xs text-gray-400">Chopsticks, fork &amp; napkins</p>
+                    <p className="text-sm font-semibold text-blue-900">Pay at restaurant</p>
+                    <p className="text-xs text-blue-500">Card or cash accepted</p>
                   </div>
                 </div>
-                <div className="relative shrink-0">
-                  <input type="checkbox" className="sr-only peer"
-                    checked={wantsUtensils} onChange={e => setWantsUtensils(e.target.checked)} />
-                  <div className="w-10 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
-                  <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
-                </div>
-              </label>
 
-              {/* Tip */}
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Add a Tip</p>
-                <div className="flex flex-wrap gap-2">
-                  {TIP_PRESETS.map(pct => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() => { setTipPercent(pct); setCustomTip('') }}
-                      className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition ${
-                        tipPercent === pct
-                          ? 'border-orange-500 bg-orange-50 text-orange-600'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {pct === 0 ? 'No tip' : (
-                        <>
-                          {pct}%
-                          {tipPercent === pct && subtotal > 0 && (
-                            <span className="ml-1 text-orange-400 text-xs">
-                              {formatCurrency(Math.round(subtotal * pct) / 100)}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setTipPercent(-1)}
-                    className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition ${
-                      tipPercent === -1
-                        ? 'border-orange-500 bg-orange-50 text-orange-600'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    Custom
-                  </button>
-                </div>
-                {tipPercent === -1 && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-sm text-gray-500">$</span>
-                    <input
-                      type="number" min="0" step="0.50"
-                      value={customTip}
-                      onChange={e => setCustomTip(e.target.value)}
-                      placeholder="0.00"
-                      className="w-28 border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-orange-400"
-                    />
+                {/* Summary */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Order Summary</p>
+                  <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+                  {taxRate > 0 && (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Tax ({parseFloat((taxRate * 100).toFixed(3))}%)</span><span>{formatCurrency(taxAmount)}</span>
+                    </div>
+                  )}
+                  {tipAmount > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tip</span><span>{formatCurrency(tipAmount)}</span></div>}
+                  <div className="flex justify-between font-extrabold text-gray-900 text-base pt-2 border-t border-gray-200 mt-1">
+                    <span>Total</span><span>{formatCurrency(totalAmount)}</span>
                   </div>
-                )}
-              </div>
-
-              {/* Payment */}
-              <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
-                💳 <strong>Payment:</strong> Pay at restaurant (card/cash accepted)
-              </div>
-
-              {/* Order Summary */}
-              <div className="border-t border-gray-100 pt-4 space-y-1.5">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
-                </div>
-                {taxRate > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Tax ({parseFloat((taxRate * 100).toFixed(3))}%)</span>
-                    <span>{formatCurrency(taxAmount)}</span>
-                  </div>
-                )}
-                {tipAmount > 0 && (
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Tip</span><span>{formatCurrency(tipAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
-                  <span>Total</span><span>{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -694,13 +702,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <button
                 onClick={placeOrder}
                 disabled={checkoutLoading || !isOpen || !restaurant.online_ordering_enabled}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base"
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base shadow-lg shadow-orange-200/60"
               >
-                {checkoutLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>Place Order · {formatCurrency(totalAmount)}</>
-                )}
+                {checkoutLoading
+                  ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : `Place Order · ${formatCurrency(totalAmount)}`}
               </button>
             </div>
           </div>
@@ -710,28 +716,54 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   )
 }
 
-function MenuItemCard({ item, onClick }: { item: MenuItem & { tags: Tag[] }, onClick: () => void }) {
+function MenuItemCard({ item, onClick }: { item: MenuItem & { tags: Tag[]; option_groups?: { id: string }[] }, onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-200 transition overflow-hidden text-left group">
-      <div className="flex gap-3 p-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 text-sm group-hover:text-orange-500 transition">{item.name}</h3>
-          {item.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>}
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {item.tags?.map(t => (
-              <span key={t.id} className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: t.color + '20', color: t.color }}>
-                {t.name}
-              </span>
-            ))}
+    <button
+      onClick={onClick}
+      className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-100 transition-all duration-200 overflow-hidden text-left group"
+    >
+      <div className="flex items-center p-4 gap-4">
+        {/* Text content */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <h3 className="font-bold text-[15px] text-gray-900 leading-snug group-hover:text-orange-500 transition-colors">
+            {item.name}
+          </h3>
+          {item.description && (
+            <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{item.description}</p>
+          )}
+          {item.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {item.tags.map(t => (
+                <span key={t.id} className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: t.color + '18', color: t.color }}>
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-extrabold text-gray-900">{formatCurrency(item.price)}</span>
+            {item.option_groups && item.option_groups.length > 0 && (
+              <span className="text-[11px] text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">Customizable</span>
+            )}
           </div>
-          <p className="font-bold text-orange-500 text-sm mt-2">{formatCurrency(item.price)}</p>
         </div>
-        {item.image_url && (
-          <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
-            <Image src={item.image_url} alt={item.name} width={80} height={80} className="object-cover w-full h-full" />
+
+        {/* Thumbnail */}
+        <div className="relative w-28 h-24 rounded-xl overflow-hidden shrink-0">
+          {item.image_url ? (
+            <Image src={item.image_url} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+              <Utensils size={22} className="text-orange-200" />
+            </div>
+          )}
+          <div className="absolute bottom-1.5 right-1.5">
+            <div className="w-7 h-7 bg-orange-500 group-hover:bg-orange-600 rounded-full flex items-center justify-center shadow-md transition-colors">
+              <Plus size={15} className="text-white" />
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </button>
   )

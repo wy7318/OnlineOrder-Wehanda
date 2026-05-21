@@ -49,3 +49,11 @@ body {
 .animate-bell-ring {
   animation: bell-ring 0.9s ease-in-out;
 }
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

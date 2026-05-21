@@ -8,7 +8,17 @@ import {
   Plus, Pencil, Trash2, ChevronRight, ChevronDown,
   ImageIcon, X, Tag, ToggleLeft, ToggleRight,
   UtensilsCrossed, SlidersHorizontal, Check,
+  Download, Upload, FileDown, GripVertical,
 } from 'lucide-react'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, rectSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { formatCurrency } from '@/lib/utils/helpers'
 import type { Category, Subcategory, MenuItem, Tag as TagType, OptionGroup, Option } from '@/lib/types'
 
@@ -54,6 +64,142 @@ function SmallModal({ title, onClose, children, size = 'sm' }: { title: string; 
   )
 }
 
+/* ── Sortable row/card components (module-level so hooks are stable) ── */
+
+function SortableCatRow({
+  cat, filterKey, setFilterKey, expandedCats, onToggleExpand,
+  items, openCatModal, deleteCat, onSubDragEnd,
+}: {
+  cat: CatWithSubs
+  filterKey: string
+  setFilterKey: (k: string) => void
+  expandedCats: Set<string>
+  onToggleExpand: (id: string) => void
+  items: ItemWithTags[]
+  openCatModal: (type: 'cat' | 'sub', editing?: Category | Subcategory, parentId?: string) => void
+  deleteCat: (id: string, type: 'cat' | 'sub') => void
+  onSubDragEnd: (catId: string, event: DragEndEvent) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cat.id })
+  const subSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`mb-0.5 ${isDragging ? 'opacity-40' : ''}`}>
+      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-xl group cursor-pointer transition ${filterKey === cat.id ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
+        <span {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 shrink-0 cursor-grab active:cursor-grabbing touch-none">
+          <GripVertical size={11} />
+        </span>
+        <button onClick={() => onToggleExpand(cat.id)} className="text-gray-300 hover:text-gray-500 shrink-0 w-4">
+          {cat.subcategories.length > 0 ? (expandedCats.has(cat.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
+        </button>
+        <button onClick={() => setFilterKey(cat.id)} className={`flex-1 text-left text-sm truncate font-medium ${filterKey === cat.id ? 'text-orange-600' : 'text-gray-700'}`}>
+          {cat.name}
+        </button>
+        <span className="text-[10px] text-gray-400">{items.filter(i => i.category_id === cat.id).length}</span>
+        <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0 transition-opacity">
+          <button onClick={() => openCatModal('sub', undefined, cat.id)} className="p-0.5 text-gray-300 hover:text-orange-500" title="Add subcategory"><Plus size={11} /></button>
+          <button onClick={() => openCatModal('cat', cat)} className="p-0.5 text-gray-300 hover:text-gray-600" title="Edit"><Pencil size={11} /></button>
+          <button onClick={() => deleteCat(cat.id, 'cat')} className="p-0.5 text-gray-300 hover:text-red-500" title="Delete"><Trash2 size={11} /></button>
+        </div>
+      </div>
+      {expandedCats.has(cat.id) && cat.subcategories.length > 0 && (
+        <DndContext sensors={subSensors} collisionDetection={closestCenter} onDragEnd={e => onSubDragEnd(cat.id, e)}>
+          <SortableContext items={cat.subcategories.map(s => s.id)} strategy={verticalListSortingStrategy}>
+            {cat.subcategories.map(sub => (
+              <SortableSubRow key={sub.id} sub={sub} filterKey={filterKey} setFilterKey={setFilterKey} openCatModal={openCatModal} deleteCat={deleteCat} />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
+  )
+}
+
+function SortableSubRow({
+  sub, filterKey, setFilterKey, openCatModal, deleteCat,
+}: {
+  sub: Subcategory
+  filterKey: string
+  setFilterKey: (k: string) => void
+  openCatModal: (type: 'cat' | 'sub', editing?: Category | Subcategory, parentId?: string) => void
+  deleteCat: (id: string, type: 'cat' | 'sub') => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-1 pl-6 pr-2 py-1 rounded-xl group cursor-pointer transition ml-1 ${isDragging ? 'opacity-40' : ''} ${filterKey === `sub:${sub.id}` ? 'bg-orange-50' : 'hover:bg-gray-50'}`}
+    >
+      <span {...attributes} {...listeners} className="text-gray-300 hover:text-gray-400 shrink-0 cursor-grab active:cursor-grabbing touch-none">
+        <GripVertical size={10} />
+      </span>
+      <button onClick={() => setFilterKey(`sub:${sub.id}`)} className={`flex-1 text-left text-xs truncate ${filterKey === `sub:${sub.id}` ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
+        {sub.name}
+      </button>
+      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0">
+        <button onClick={() => openCatModal('sub', sub)} className="p-0.5 text-gray-300 hover:text-gray-600"><Pencil size={10} /></button>
+        <button onClick={() => deleteCat(sub.id, 'sub')} className="p-0.5 text-gray-300 hover:text-red-500"><Trash2 size={10} /></button>
+      </div>
+    </div>
+  )
+}
+
+function SortableItemCard({
+  item, openEdit, deleteItem, quickToggle,
+}: {
+  item: ItemWithTags
+  openEdit: (item: ItemWithTags) => void
+  deleteItem: (id: string) => void
+  quickToggle: (item: ItemWithTags) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group flex flex-col"
+    >
+      <div className="relative h-40 bg-gray-100 shrink-0">
+        {item.image_url
+          ? <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+          : <div className="flex items-center justify-center h-full text-gray-300"><ImageIcon size={28} /></div>
+        }
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button {...attributes} {...listeners} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-grab active:cursor-grabbing touch-none">
+            <GripVertical size={12} className="text-gray-400" />
+          </button>
+          <button onClick={() => openEdit(item)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-orange-50 transition">
+            <Pencil size={12} className="text-gray-600" />
+          </button>
+          <button onClick={() => deleteItem(item.id)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-red-50 transition">
+            <Trash2 size={12} className="text-red-400" />
+          </button>
+        </div>
+      </div>
+      <div className="p-4 flex-1 flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</h3>
+          <span className="font-bold text-orange-500 text-sm shrink-0">{formatCurrency(item.price)}</span>
+        </div>
+        {item.description && <p className="text-xs text-gray-400 line-clamp-2">{item.description}</p>}
+        {item.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {item.tags.map(t => (
+              <span key={t.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: t.color + '20', color: t.color }}>{t.name}</span>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
+          <span className={`text-xs font-medium ${item.is_available ? 'text-green-600' : 'text-gray-400'}`}>
+            {item.is_available ? 'Available' : 'Unavailable'}
+          </span>
+          <Toggle checked={item.is_available} onChange={() => quickToggle(item)} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MenuBuilderPage() {
   const { toast } = useToast()
   const supabase = createClient()
@@ -64,6 +210,11 @@ export default function MenuBuilderPage() {
   const [tags, setTags] = useState<TagType[]>([])
   const [filterKey, setFilterKey] = useState<string>('all')
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set())
+
+  // Ordering
+  const [dirtyOrder, setDirtyOrder] = useState(false)
+  const [savingOrder, setSavingOrder] = useState(false)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Drawer
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -90,6 +241,16 @@ export default function MenuBuilderPage() {
   const [newTagColor, setNewTagColor] = useState('#f97316')
   const [savingTag, setSavingTag] = useState(false)
 
+  // CSV import/export
+  type ImportPreviewRow = {
+    _id: string; name: string; description: string; price: string
+    category: string; subcategory: string; is_available: boolean; tags: string
+  }
+  const [importing, setImporting] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewRow[] | null>(null)
+  const [confirmingImport, setConfirmingImport] = useState(false)
+  const [importProgress, setImportProgress] = useState(0)
+
   // Option group modal
   type OptionRow = { name: string; additional_price: string; is_active: boolean }
   const [groupModal, setGroupModal] = useState<{ editing?: GroupWithOptions } | null>(null)
@@ -104,10 +265,10 @@ export default function MenuBuilderPage() {
 
   /* ── data loading ── */
   const loadAll = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: r } = await supabase.from('restaurants').select('id').eq('owner_user_id', user.id).single()
-    if (!r) return
+    const res = await fetch('/api/restaurant/current')
+    if (!res.ok) return
+    const r = await res.json()
+    if (!r?.id) return
     setRestaurantId(r.id)
 
     const [{ data: cats }, { data: subs }, { data: its }, { data: tgs }, { data: itemTags }] = await Promise.all([
@@ -330,6 +491,283 @@ export default function MenuBuilderPage() {
     if (editingItem && restaurantId) loadOptionGroups(editingItem.id, restaurantId)
   }
 
+  /* ── ordering ── */
+  function handleCatDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+    setCategories(prev => {
+      const oldIdx = prev.findIndex(c => c.id === active.id)
+      const newIdx = prev.findIndex(c => c.id === over.id)
+      return arrayMove(prev, oldIdx, newIdx)
+    })
+    setDirtyOrder(true)
+  }
+
+  function handleSubDragEnd(catId: string, { active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+    setCategories(prev => prev.map(c => {
+      if (c.id !== catId) return c
+      const oldIdx = c.subcategories.findIndex(s => s.id === active.id)
+      const newIdx = c.subcategories.findIndex(s => s.id === over.id)
+      return { ...c, subcategories: arrayMove(c.subcategories, oldIdx, newIdx) }
+    }))
+    setDirtyOrder(true)
+  }
+
+  function handleItemDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+    setItems(prev => {
+      const oldIdx = prev.findIndex(i => i.id === active.id)
+      const newIdx = prev.findIndex(i => i.id === over.id)
+      return arrayMove(prev, oldIdx, newIdx)
+    })
+    setDirtyOrder(true)
+  }
+
+  async function saveOrder() {
+    if (!restaurantId) return
+    setSavingOrder(true)
+    try {
+      await Promise.all([
+        ...categories.map((cat, i) =>
+          supabase.from('categories').update({ display_order: i }).eq('id', cat.id)
+        ),
+        ...categories.flatMap(cat =>
+          cat.subcategories.map((sub, i) =>
+            supabase.from('subcategories').update({ display_order: i }).eq('id', sub.id)
+          )
+        ),
+        ...items.map((item, i) =>
+          supabase.from('menu_items').update({ display_order: i }).eq('id', item.id)
+        ),
+      ])
+      setDirtyOrder(false)
+      toast('Order saved!', 'success')
+    } catch {
+      toast('Failed to save order', 'error')
+    }
+    setSavingOrder(false)
+  }
+
+  /* ── CSV helpers ── */
+  function parseCSVLine(line: string): string[] {
+    const result: string[] = []
+    let current = '', inQuotes = false
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
+        else inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        result.push(current); current = ''
+      } else current += char
+    }
+    result.push(current)
+    return result
+  }
+
+  function downloadCSV(content: string, filename: string) {
+    const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function downloadTemplate() {
+    const headers = ['name', 'description', 'price', 'category', 'subcategory', 'is_available', 'tags']
+    const examples = [
+      ['Spicy Tuna Roll', 'Fresh tuna with spicy mayo and cucumber', '14.99', 'Rolls', '', 'true', 'Popular|Spicy'],
+      ['California Roll', 'Crab, avocado and cucumber', '12.99', 'Rolls', 'Specialty', 'true', 'Bestseller'],
+      ['Edamame', 'Steamed salted soybeans', '5.99', 'Appetizers', '', 'true', 'Vegetarian'],
+      ['Miso Soup', 'Traditional Japanese miso soup', '3.99', 'Soups', '', 'true', ''],
+      ['Chocolate Lava Cake', 'Warm cake with molten center', '7.99', 'Desserts', '', 'false', 'Chef Special'],
+    ]
+    const csv = [headers, ...examples]
+      .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    downloadCSV(csv, 'menu_template.csv')
+  }
+
+  function exportMenu() {
+    if (items.length === 0) { toast('No items to export', 'error'); return }
+    const headers = ['name', 'description', 'price', 'category', 'subcategory', 'is_available', 'tags']
+    const rows = items.map(item => {
+      const catName = categories.find(c => c.id === item.category_id)?.name ?? ''
+      const subName = categories.flatMap(c => c.subcategories).find(s => s.id === item.subcategory_id)?.name ?? ''
+      const tagNames = item.tags.map(t => t.name).join('|')
+      return [item.name, item.description ?? '', String(item.price), catName, subName, String(item.is_available), tagNames]
+    })
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    downloadCSV(csv, `menu_${new Date().toISOString().slice(0, 10)}.csv`)
+    toast(`Exported ${items.length} items`, 'success')
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !restaurantId) return
+    setImporting(true)
+
+    try {
+      const raw = await file.text()
+      const text = raw.replace(/^﻿/, '') // strip Excel BOM
+      const lines = text.trim().split(/\r?\n/)
+      if (lines.length < 2) { toast('CSV has no data rows', 'error'); return }
+
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
+      const col = (n: string) => headers.indexOf(n)
+      const nameCol = col('name'), priceCol = col('price'), descCol = col('description')
+      const catCol = col('category'), subCol = col('subcategory'), availCol = col('is_available'), tagsCol = col('tags')
+
+      if (nameCol === -1 || priceCol === -1) {
+        toast('CSV must have "name" and "price" columns', 'error'); return
+      }
+
+      const rows: ImportPreviewRow[] = []
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+        const row = parseCSVLine(line)
+        const get = (idx: number) => (idx >= 0 ? (row[idx] ?? '').trim() : '')
+        rows.push({
+          _id: `${Date.now()}-${i}`,
+          name: get(nameCol),
+          description: get(descCol),
+          price: get(priceCol),
+          category: get(catCol),
+          subcategory: get(subCol),
+          is_available: get(availCol).toLowerCase() !== 'false',
+          tags: get(tagsCol),
+        })
+      }
+
+      if (rows.length === 0) { toast('No data rows found in CSV', 'error'); return }
+      setImportPreview(rows)
+    } catch (err) {
+      toast(`Failed to read CSV: ${err instanceof Error ? err.message : 'unknown error'}`, 'error')
+    } finally {
+      setImporting(false)
+      e.target.value = ''
+    }
+  }
+
+  function isValidRow(row: ImportPreviewRow): boolean {
+    const p = parseFloat(row.price)
+    return !!row.name.trim() && !isNaN(p) && p >= 0
+  }
+
+  function updatePreviewRow(id: string, field: keyof ImportPreviewRow, value: string | boolean) {
+    setImportPreview(prev => prev ? prev.map(r => r._id === id ? { ...r, [field]: value } : r) : prev)
+  }
+
+  function deletePreviewRow(id: string) {
+    setImportPreview(prev => {
+      if (!prev) return prev
+      const next = prev.filter(r => r._id !== id)
+      return next.length === 0 ? null : next
+    })
+  }
+
+  async function confirmImport() {
+    if (!importPreview || !restaurantId) return
+    const validRows = importPreview.filter(isValidRow)
+    if (validRows.length === 0) { toast('No valid rows to import', 'error'); return }
+
+    setConfirmingImport(true)
+    setImportProgress(0)
+
+    const catMap = new Map<string, string>()
+    const subMap = new Map<string, string>()
+    const tagMap = new Map<string, string>()
+    for (const cat of categories) {
+      catMap.set(cat.name.toLowerCase(), cat.id)
+      for (const sub of cat.subcategories) subMap.set(`${cat.id}::${sub.name.toLowerCase()}`, sub.id)
+    }
+    for (const tag of tags) tagMap.set(tag.name.toLowerCase(), tag.id)
+
+    let created = 0, skipped = 0
+    const total = validRows.length
+
+    for (let i = 0; i < total; i++) {
+      const row = validRows[i]
+      const price = parseFloat(row.price)
+
+      let categoryId: string | null = null
+      const catName = row.category.trim()
+      if (catName) {
+        const key = catName.toLowerCase()
+        if (catMap.has(key)) {
+          categoryId = catMap.get(key)!
+        } else {
+          const { data } = await supabase.from('categories').insert({
+            name: catName, restaurant_id: restaurantId, is_active: true, display_order: catMap.size,
+          }).select().single()
+          if (data) { catMap.set(key, data.id); categoryId = data.id }
+        }
+      }
+
+      let subcategoryId: string | null = null
+      const subName = row.subcategory.trim()
+      if (subName && categoryId) {
+        const key = `${categoryId}::${subName.toLowerCase()}`
+        if (subMap.has(key)) {
+          subcategoryId = subMap.get(key)!
+        } else {
+          const { data } = await supabase.from('subcategories').insert({
+            name: subName, category_id: categoryId, restaurant_id: restaurantId, is_active: true, display_order: 0,
+          }).select().single()
+          if (data) { subMap.set(key, data.id); subcategoryId = data.id }
+        }
+      }
+
+      const tagIds: string[] = []
+      if (row.tags.trim()) {
+        for (const raw of row.tags.split('|')) {
+          const t = raw.trim()
+          if (!t) continue
+          const key = t.toLowerCase()
+          if (tagMap.has(key)) {
+            tagIds.push(tagMap.get(key)!)
+          } else {
+            const { data } = await supabase.from('tags').insert({
+              name: t, color: '#f97316', restaurant_id: restaurantId,
+            }).select().single()
+            if (data) { tagMap.set(key, data.id); tagIds.push(data.id) }
+          }
+        }
+      }
+
+      const { data: newItem } = await supabase.from('menu_items').insert({
+        name: row.name.trim(), description: row.description.trim() || null, price,
+        category_id: categoryId, subcategory_id: subcategoryId,
+        is_available: row.is_available, restaurant_id: restaurantId, display_order: items.length + created,
+      }).select().single()
+
+      if (newItem) {
+        if (tagIds.length) {
+          await supabase.from('menu_item_tags').insert(
+            tagIds.map(tag_id => ({ menu_item_id: newItem.id, tag_id, restaurant_id: restaurantId! }))
+          )
+        }
+        created++
+      } else {
+        skipped++
+      }
+
+      setImportProgress(Math.round(((i + 1) / total) * 100))
+    }
+
+    await loadAll()
+    toast(
+      `Imported ${created} item${created !== 1 ? 's' : ''}${skipped > 0 ? `, skipped ${skipped}` : ''}`,
+      created > 0 ? 'success' : 'error'
+    )
+    setConfirmingImport(false)
+    setImportProgress(0)
+    setImportPreview(null)
+  }
+
   /* ── render ── */
   return (
     <div className="flex -mx-8 -my-8" style={{ height: '100vh' }}>
@@ -350,39 +788,24 @@ export default function MenuBuilderPage() {
             <span className="text-xs text-gray-400">{items.length}</span>
           </button>
 
-          {categories.map(cat => (
-            <div key={cat.id} className="mb-0.5">
-              <div className={`flex items-center gap-1 px-2 py-1.5 rounded-xl group cursor-pointer transition ${filterKey === cat.id ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
-                <button
-                  onClick={() => setExpandedCats(prev => { const n = new Set(prev); n.has(cat.id) ? n.delete(cat.id) : n.add(cat.id); return n })}
-                  className="text-gray-300 hover:text-gray-500 shrink-0 w-4"
-                >
-                  {cat.subcategories.length > 0 ? (expandedCats.has(cat.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
-                </button>
-                <button onClick={() => setFilterKey(cat.id)} className={`flex-1 text-left text-sm truncate font-medium ${filterKey === cat.id ? 'text-orange-600' : 'text-gray-700'}`}>
-                  {cat.name}
-                </button>
-                <span className="text-[10px] text-gray-400">{items.filter(i => i.category_id === cat.id).length}</span>
-                <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0 transition-opacity">
-                  <button onClick={() => openCatModal('sub', undefined, cat.id)} className="p-0.5 text-gray-300 hover:text-orange-500" title="Add subcategory"><Plus size={11} /></button>
-                  <button onClick={() => openCatModal('cat', cat)} className="p-0.5 text-gray-300 hover:text-gray-600" title="Edit"><Pencil size={11} /></button>
-                  <button onClick={() => deleteCat(cat.id, 'cat')} className="p-0.5 text-gray-300 hover:text-red-500" title="Delete"><Trash2 size={11} /></button>
-                </div>
-              </div>
-
-              {expandedCats.has(cat.id) && cat.subcategories.map(sub => (
-                <div key={sub.id} className={`flex items-center gap-1 pl-7 pr-2 py-1 rounded-xl group cursor-pointer transition ml-1 ${filterKey === `sub:${sub.id}` ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
-                  <button onClick={() => setFilterKey(`sub:${sub.id}`)} className={`flex-1 text-left text-xs truncate ${filterKey === `sub:${sub.id}` ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
-                    {sub.name}
-                  </button>
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0">
-                    <button onClick={() => openCatModal('sub', sub)} className="p-0.5 text-gray-300 hover:text-gray-600"><Pencil size={10} /></button>
-                    <button onClick={() => deleteCat(sub.id, 'sub')} className="p-0.5 text-gray-300 hover:text-red-500"><Trash2 size={10} /></button>
-                  </div>
-                </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCatDragEnd}>
+            <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+              {categories.map(cat => (
+                <SortableCatRow
+                  key={cat.id}
+                  cat={cat}
+                  filterKey={filterKey}
+                  setFilterKey={setFilterKey}
+                  expandedCats={expandedCats}
+                  onToggleExpand={id => setExpandedCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })}
+                  items={items}
+                  openCatModal={openCatModal}
+                  deleteCat={deleteCat}
+                  onSubDragEnd={handleSubDragEnd}
+                />
               ))}
-            </div>
-          ))}
+            </SortableContext>
+          </DndContext>
         </nav>
 
         <div className="px-3 py-3 border-t border-gray-100 space-y-1 shrink-0">
@@ -397,13 +820,81 @@ export default function MenuBuilderPage() {
 
       {/* Right: Item Grid */}
       <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
-        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shrink-0 gap-3 flex-wrap">
           <div>
             <h1 className="text-base font-bold text-gray-900">{filterLabel}</h1>
             <p className="text-xs text-gray-400">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}</p>
           </div>
-          <button onClick={openNew} className={BTN_PRIMARY}><Plus size={14} /> New Item</button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Download template */}
+            <button
+              onClick={downloadTemplate}
+              title="Download CSV template"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300 transition"
+            >
+              <FileDown size={14} /> Template
+            </button>
+
+            {/* Import CSV */}
+            <label
+              title="Import items from CSV"
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border rounded-xl transition cursor-pointer ${
+                importing
+                  ? 'text-orange-500 border-orange-300 bg-orange-50'
+                  : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300'
+              }`}
+            >
+              <Upload size={14} />
+              {importing ? 'Importing…' : 'Import'}
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                disabled={importing}
+                onChange={handleImport}
+              />
+            </label>
+
+            {/* Export CSV */}
+            <button
+              onClick={exportMenu}
+              disabled={items.length === 0}
+              title="Export menu to CSV"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download size={14} /> Export
+            </button>
+
+            <div className="w-px h-6 bg-gray-200" />
+            <button onClick={openNew} className={BTN_PRIMARY}><Plus size={14} /> New Item</button>
+          </div>
         </div>
+
+        {/* Save Order banner */}
+        {dirtyOrder && (
+          <div className="flex items-center justify-between px-6 py-2.5 bg-amber-50 border-b border-amber-100 shrink-0">
+            <div className="flex items-center gap-2 text-amber-700">
+              <GripVertical size={14} />
+              <span className="text-sm font-medium">Order changed — save to apply on customer portal</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setDirtyOrder(false); loadAll() }}
+                disabled={savingOrder}
+                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition disabled:opacity-40"
+              >
+                Discard
+              </button>
+              <button
+                onClick={saveOrder}
+                disabled={savingOrder}
+                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-1.5 rounded-xl transition disabled:opacity-50"
+              >
+                {savingOrder ? 'Saving…' : 'Save Order'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-6">
           {filteredItems.length === 0 ? (
@@ -413,50 +904,25 @@ export default function MenuBuilderPage() {
               <button onClick={openNew} className={BTN_PRIMARY + ' mt-3'}><Plus size={14} /> Add First Item</button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredItems.map(item => (
-                <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group flex flex-col">
-                  <div className="relative h-40 bg-gray-100 shrink-0">
-                    {item.image_url
-                      ? <Image src={item.image_url} alt={item.name} fill className="object-cover" />
-                      : <div className="flex items-center justify-center h-full text-gray-300"><ImageIcon size={28} /></div>
-                    }
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button onClick={() => openEdit(item)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-orange-50 transition">
-                        <Pencil size={12} className="text-gray-600" />
-                      </button>
-                      <button onClick={() => deleteItem(item.id)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-red-50 transition">
-                        <Trash2 size={12} className="text-red-400" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</h3>
-                      <span className="font-bold text-orange-500 text-sm shrink-0">{formatCurrency(item.price)}</span>
-                    </div>
-                    {item.description && <p className="text-xs text-gray-400 line-clamp-2">{item.description}</p>}
-                    {item.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {item.tags.map(t => (
-                          <span key={t.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: t.color + '20', color: t.color }}>{t.name}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
-                      <span className={`text-xs font-medium ${item.is_available ? 'text-green-600' : 'text-gray-400'}`}>
-                        {item.is_available ? 'Available' : 'Unavailable'}
-                      </span>
-                      <Toggle checked={item.is_available} onChange={() => quickToggle(item)} />
-                    </div>
-                  </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+              <SortableContext items={filteredItems.map(i => i.id)} strategy={rectSortingStrategy}>
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredItems.map(item => (
+                    <SortableItemCard
+                      key={item.id}
+                      item={item}
+                      openEdit={openEdit}
+                      deleteItem={deleteItem}
+                      quickToggle={quickToggle}
+                    />
+                  ))}
+                  <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-orange-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 transition group">
+                    <Plus size={24} className="group-hover:scale-110 transition-transform" />
+                    <span className="text-sm font-medium">Add Item</span>
+                  </button>
                 </div>
-              ))}
-              <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-orange-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 transition group">
-                <Plus size={24} className="group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium">Add Item</span>
-              </button>
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
@@ -796,6 +1262,175 @@ export default function MenuBuilderPage() {
             </div>
           </div>
         </SmallModal>
+      )}
+
+      {/* Import Preview Modal */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!confirmingImport) setImportPreview(null) }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col z-10">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <div>
+                <h3 className="font-bold text-gray-900">Import Preview</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {importPreview.filter(isValidRow).length} of {importPreview.length} rows valid — edit any cell before importing
+                </p>
+              </div>
+              {!confirmingImport && (
+                <button onClick={() => setImportPreview(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Datalists for autocomplete */}
+            <datalist id="import-cat-list">
+              {categories.map(c => <option key={c.id} value={c.name} />)}
+            </datalist>
+            <datalist id="import-sub-list">
+              {categories.flatMap(c => c.subcategories).map(s => <option key={s.id} value={s.name} />)}
+            </datalist>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm border-collapse" style={{ minWidth: 920 }}>
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                  <tr>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-8">#</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-[140px]">Name *</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-[160px]">Description</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-20">Price *</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-[110px]">Category</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-[110px]">Subcategory</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-16">Avail.</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide min-w-[120px]">Tags (|‑separated)</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {importPreview.map((row, idx) => {
+                    const valid = isValidRow(row)
+                    const CELL = 'w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-orange-400 focus:outline-none px-1 py-0.5 text-sm transition'
+                    return (
+                      <tr key={row._id} className={valid ? 'hover:bg-gray-50/40' : 'bg-red-50'}>
+                        <td className="px-3 py-2 text-xs text-gray-400 select-none">{idx + 1}</td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL + (!row.name.trim() ? ' placeholder-red-400' : '')}
+                            value={row.name}
+                            placeholder="Required"
+                            onChange={e => updatePreviewRow(row._id, 'name', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL}
+                            value={row.description}
+                            onChange={e => updatePreviewRow(row._id, 'description', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL + (isNaN(parseFloat(row.price)) || parseFloat(row.price) < 0 ? ' text-red-500' : '')}
+                            type="number" min="0" step="0.01"
+                            value={row.price}
+                            onChange={e => updatePreviewRow(row._id, 'price', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL}
+                            value={row.category}
+                            list="import-cat-list"
+                            onChange={e => updatePreviewRow(row._id, 'category', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL}
+                            value={row.subcategory}
+                            list="import-sub-list"
+                            onChange={e => updatePreviewRow(row._id, 'subcategory', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <Toggle checked={row.is_available} onChange={v => updatePreviewRow(row._id, 'is_available', v)} />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={CELL}
+                            value={row.tags}
+                            placeholder="Tag1|Tag2"
+                            onChange={e => updatePreviewRow(row._id, 'tags', e.target.value)}
+                            disabled={confirmingImport}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <button
+                            onClick={() => deletePreviewRow(row._id)}
+                            disabled={confirmingImport}
+                            className="text-gray-300 hover:text-red-400 transition disabled:opacity-30"
+                          >
+                            <X size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Progress bar */}
+            {confirmingImport && (
+              <div className="px-6 py-2 shrink-0 border-t border-gray-100 bg-white">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                  <span>Importing items…</span>
+                  <span>{importProgress}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-orange-500 rounded-full transition-all duration-200" style={{ width: `${importProgress}%` }} />
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 shrink-0 bg-white rounded-b-2xl">
+              <p className="text-xs">
+                {importPreview.filter(r => !isValidRow(r)).length > 0 && (
+                  <span className="text-red-500 font-medium">
+                    {importPreview.filter(r => !isValidRow(r)).length} invalid row{importPreview.filter(r => !isValidRow(r)).length !== 1 ? 's' : ''} will be skipped
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setImportPreview(null)}
+                  disabled={confirmingImport}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmImport}
+                  disabled={confirmingImport || importPreview.filter(isValidRow).length === 0}
+                  className={BTN_PRIMARY}
+                >
+                  {confirmingImport
+                    ? `Importing… ${importProgress}%`
+                    : `Import ${importPreview.filter(isValidRow).length} item${importPreview.filter(isValidRow).length !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
