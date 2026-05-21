@@ -1,15 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, ChevronRight, Calendar, Users, Clock,
-  Check, X, MessageSquare, RefreshCw, CalendarDays,
+  Check, X, MessageSquare, RefreshCw, CalendarDays, Plus, Minus,
 } from 'lucide-react'
 import Header from '@/components/dashboard/Header'
 import Button from '@/components/ui/Button'
-import { formatTime12h, toDateStr } from '@/lib/utils/slots'
-import type { Reservation, ReservationStatus } from '@/lib/types'
+import { formatTime12h, toDateStr, generateTimeSlots } from '@/lib/utils/slots'
+import type { Reservation, ReservationStatus, RestaurantHours } from '@/lib/types'
+
+const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400 bg-white transition'
+
+type NewRsvForm = {
+  date: string; time: string; partySize: number
+  name: string; phone: string; email: string
+  notes: string; status: 'confirmed' | 'pending'
+}
+const EMPTY_FORM: NewRsvForm = {
+  date: '', time: '', partySize: 2, name: '', phone: '', email: '', notes: '', status: 'confirmed',
+}
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -46,6 +57,13 @@ export default function ReservationsPage() {
   })
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [restaurantHours, setRestaurantHours] = useState<RestaurantHours[]>([])
+
+  // New reservation modal
+  const [newRsvOpen, setNewRsvOpen] = useState(false)
+  const [newRsv, setNewRsv] = useState<NewRsvForm>(EMPTY_FORM)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   const todayStr = toDateStr(new Date())
 
@@ -57,10 +75,13 @@ export default function ReservationsPage() {
       if (r?.id) {
         setRestaurantId(r.id)
         setSelectedDate(todayStr)
+        // Fetch hours in parallel — used for time slot generation in new reservation modal
+        supabase.from('restaurant_hours').select('*').eq('restaurant_id', r.id)
+          .then(({ data }) => setRestaurantHours(data ?? []))
       }
     }
     init()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     if (!restaurantId) return
@@ -96,6 +117,61 @@ export default function ReservationsPage() {
     })
     await load()
     setEditingNotes(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
+
+  // Time slots for the selected date in the new-reservation modal
+  const timeSlots = useMemo(() => {
+    if (!newRsv.date) return []
+    if (restaurantHours.length > 0) return generateTimeSlots(restaurantHours, newRsv.date)
+    // Fallback when hours not yet loaded: 7 AM – 10 PM
+    const slots: string[] = []
+    for (let h = 7; h < 22; h++)
+      for (const m of [0, 30])
+        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    return slots
+  }, [newRsv.date, restaurantHours])
+
+  function openNewRsv() {
+    setNewRsv({ ...EMPTY_FORM, date: selectedDate || todayStr })
+    setCreateError('')
+    setNewRsvOpen(true)
+  }
+
+  async function handleCreateReservation(e: React.FormEvent) {
+    e.preventDefault()
+    setCreating(true)
+    setCreateError('')
+
+    const res = await fetch('/api/reservations/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: newRsv.name.trim(),
+        customer_phone: newRsv.phone.trim(),
+        customer_email: newRsv.email.trim() || null,
+        party_size: newRsv.partySize,
+        reservation_date: newRsv.date,
+        reservation_time: newRsv.time,
+        notes: newRsv.notes.trim() || null,
+        status: newRsv.status,
+      }),
+    })
+
+    const json = await res.json()
+    if (!res.ok) {
+      setCreateError(json.error ?? 'Failed to create reservation')
+      setCreating(false)
+      return
+    }
+
+    // Optimistic update — no full reload needed
+    setReservations(prev => [...prev, json as Reservation])
+    setNewRsvOpen(false)
+    setCreating(false)
+    // Jump calendar to the new reservation's date
+    const [y, m] = newRsv.date.split('-').map(Number)
+    setCalMonth({ year: y, month: m - 1 })
+    setSelectedDate(newRsv.date)
   }
 
   // Calendar helpers
@@ -141,9 +217,14 @@ export default function ReservationsPage() {
         title="Reservations"
         subtitle="Manage table reservations"
         actions={
-          <Button onClick={load} size="sm" className="gap-2">
-            <RefreshCw size={14} /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={load} size="sm" variant="outline" className="gap-2">
+              <RefreshCw size={14} /> Refresh
+            </Button>
+            <Button onClick={openNewRsv} size="sm" className="gap-2">
+              <Plus size={14} /> New Reservation
+            </Button>
+          </div>
         }
       />
 
@@ -482,6 +563,183 @@ export default function ReservationsPage() {
           </div>
         </div>
       </div>
+      {/* ── New Reservation Modal ─────────────────────────────────────────── */}
+      {newRsvOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => { if (!creating) setNewRsvOpen(false) }} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md z-10 flex flex-col max-h-[90vh]">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <h2 className="font-bold text-gray-900">New Reservation</h2>
+              <button
+                onClick={() => setNewRsvOpen(false)}
+                disabled={creating}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition disabled:opacity-40"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateReservation} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+              {/* Date + Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Date *</label>
+                  <input
+                    type="date"
+                    min={todayStr}
+                    value={newRsv.date}
+                    onChange={e => setNewRsv(f => ({ ...f, date: e.target.value, time: '' }))}
+                    className={INPUT}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Time *</label>
+                  <select
+                    value={newRsv.time}
+                    onChange={e => setNewRsv(f => ({ ...f, time: e.target.value }))}
+                    className={INPUT}
+                    required
+                    disabled={!newRsv.date}
+                  >
+                    <option value="">— pick time —</option>
+                    {timeSlots.length === 0 && newRsv.date
+                      ? <option disabled>Closed this day</option>
+                      : timeSlots.map(s => <option key={s} value={s}>{formatTime12h(s)}</option>)
+                    }
+                  </select>
+                </div>
+              </div>
+
+              {/* Party size */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Party Size *</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewRsv(f => ({ ...f, partySize: Math.max(1, f.partySize - 1) }))}
+                    className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-10 text-center font-bold text-gray-900 text-lg">{newRsv.partySize}</span>
+                  <button
+                    type="button"
+                    onClick={() => setNewRsv(f => ({ ...f, partySize: f.partySize + 1 }))}
+                    className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <span className="text-xs text-gray-400 ml-1">guests</span>
+                </div>
+              </div>
+
+              {/* Name + Phone */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Customer Name *</label>
+                  <input
+                    value={newRsv.name}
+                    onChange={e => setNewRsv(f => ({ ...f, name: e.target.value }))}
+                    className={INPUT}
+                    placeholder="Full name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Phone *</label>
+                  <input
+                    type="tel"
+                    value={newRsv.phone}
+                    onChange={e => setNewRsv(f => ({ ...f, phone: e.target.value }))}
+                    className={INPUT}
+                    placeholder="555-000-0000"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Email <span className="font-normal text-gray-400">(optional)</span></label>
+                <input
+                  type="email"
+                  value={newRsv.email}
+                  onChange={e => setNewRsv(f => ({ ...f, email: e.target.value }))}
+                  className={INPUT}
+                  placeholder="customer@email.com"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Notes <span className="font-normal text-gray-400">(optional)</span></label>
+                <textarea
+                  value={newRsv.notes}
+                  onChange={e => setNewRsv(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="Allergy, occasion, seating preference…"
+                  className={INPUT + ' resize-none'}
+                />
+              </div>
+
+              {/* Status toggle */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Initial Status</label>
+                <div className="flex gap-2">
+                  {(['confirmed', 'pending'] as const).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setNewRsv(f => ({ ...f, status: s }))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition ${
+                        newRsv.status === s
+                          ? s === 'confirmed'
+                            ? 'border-green-500 bg-green-50 text-green-700'
+                            : 'border-amber-400 bg-amber-50 text-amber-700'
+                          : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
+                      }`}
+                    >
+                      {s === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {newRsv.status === 'confirmed' ? 'Reservation will be immediately confirmed — good for phone/walk-in bookings.' : 'Reservation will sit in the pending queue for review.'}
+                </p>
+              </div>
+
+              {/* Error */}
+              {createError && (
+                <p className="text-sm text-red-500 font-medium bg-red-50 rounded-xl px-3 py-2">{createError}</p>
+              )}
+            </form>
+
+            {/* Footer */}
+            <div className="flex gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => setNewRsvOpen(false)}
+                disabled={creating}
+                className="flex-1 py-2.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 font-medium text-gray-600 transition disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateReservation}
+                disabled={creating || !newRsv.date || !newRsv.time || !newRsv.name.trim() || !newRsv.phone.trim()}
+                className="flex-1 py-2.5 text-sm bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition disabled:opacity-40"
+              >
+                {creating ? 'Creating…' : 'Create Reservation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
