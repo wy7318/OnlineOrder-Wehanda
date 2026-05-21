@@ -11,6 +11,7 @@ import {
   DollarSign, ShoppingBag, Clock, XCircle, Users, RefreshCw,
   AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight,
   Flame, BarChart2, UtensilsCrossed, Plus, Settings, TrendingUp,
+  CalendarDays, CalendarCheck2, CalendarClock, UserCheck,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils/helpers'
 
@@ -62,6 +63,28 @@ interface OverviewData {
     overdue_preparing: { id: string; order_number: string; order_type: string; minutes_ago: number } | null
     avg_prep_today: number
   }
+}
+
+interface ReservationSummary {
+  id: string
+  customer_name: string
+  customer_phone: string
+  party_size: number
+  reservation_date: string
+  reservation_time: string
+  status: string
+  notes: string | null
+}
+
+interface ReservationStats {
+  today_total: number
+  today_confirmed: number
+  today_pending: number
+  today_no_show: number
+  today_covers: number
+  this_week_total: number
+  this_week_covers: number
+  next_7_days: { date: string; count: number; covers: number }[]
 }
 
 /* ─── helpers ─── */
@@ -177,6 +200,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [targetInput, setTargetInput] = useState('')
   const [savingTarget, setSavingTarget] = useState(false)
+  const [todayRes, setTodayRes] = useState<ReservationSummary[]>([])
+  const [resStats, setResStats] = useState<ReservationStats | null>(null)
   const queueRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchOverview = useCallback(async (p: Period) => {
@@ -200,13 +225,23 @@ export default function DashboardPage() {
     if (res.ok) setQueue(await res.json())
   }, [])
 
+  const fetchReservations = useCallback(async () => {
+    const res = await fetch('/api/dashboard/reservations')
+    if (res.ok) {
+      const d = await res.json()
+      setTodayRes(d.today ?? [])
+      setResStats(d.stats ?? null)
+    }
+  }, [])
+
   useEffect(() => { fetchOverview(period) }, [period, fetchOverview])
 
   useEffect(() => {
     fetchQueue()
+    fetchReservations()
     queueRef.current = setInterval(fetchQueue, 30000)
     return () => { if (queueRef.current) clearInterval(queueRef.current) }
-  }, [fetchQueue])
+  }, [fetchQueue, fetchReservations])
 
   const handleSaveTarget = async () => {
     const val = parseFloat(targetInput)
@@ -495,6 +530,125 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Reservation Highlights */}
+      {resStats && (resStats.today_total > 0 || resStats.this_week_total > 0) && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <CalendarDays size={14} className="text-indigo-500" />
+              Reservations
+              {resStats.today_pending > 0 && (
+                <span className="ml-1 bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {resStats.today_pending} pending
+                </span>
+              )}
+            </h2>
+            <Link href="/reservations" className="text-xs text-indigo-500 hover:text-indigo-600">Manage →</Link>
+          </div>
+
+          {/* Stat pills */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {[
+              { icon: CalendarCheck2, label: "Today's bookings", value: String(resStats.today_total), sub: `${resStats.today_confirmed} confirmed`, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { icon: Users, label: 'Covers today', value: String(resStats.today_covers), sub: 'total guests', color: 'text-teal-600', bg: 'bg-teal-50' },
+              { icon: CalendarClock, label: 'Pending confirmation', value: String(resStats.today_pending), sub: resStats.today_pending > 0 ? 'needs attention' : 'all confirmed', color: resStats.today_pending > 0 ? 'text-amber-600' : 'text-green-600', bg: resStats.today_pending > 0 ? 'bg-amber-50' : 'bg-green-50' },
+              { icon: CalendarDays, label: 'This week', value: String(resStats.this_week_total), sub: `${resStats.this_week_covers} covers`, color: 'text-blue-600', bg: 'bg-blue-50' },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+                <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center shrink-0`}>
+                  <s.icon size={16} className={s.color} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-gray-400 leading-tight truncate">{s.label}</p>
+                  <p className={`text-xl font-bold leading-tight ${s.color}`}>{s.value}</p>
+                  <p className="text-[11px] text-gray-400 leading-tight">{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid xl:grid-cols-2 gap-4">
+            {/* Today's schedule */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <UserCheck size={14} className="text-indigo-400" />
+                Today&apos;s schedule
+              </h3>
+              {todayRes.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No reservations today</p>
+              ) : (
+                <div className="space-y-2">
+                  {todayRes.slice(0, 6).map(r => {
+                    const [hh, mm] = r.reservation_time.split(':')
+                    const h = parseInt(hh), m = mm
+                    const label = h === 0 ? `12:${m}am` : h < 12 ? `${h}:${m}am` : h === 12 ? `12:${m}pm` : `${h - 12}:${m}pm`
+                    const statusCls =
+                      r.status === 'confirmed' ? 'bg-green-50 text-green-700' :
+                      r.status === 'pending'   ? 'bg-amber-50 text-amber-700' :
+                      r.status === 'no_show'   ? 'bg-red-50 text-red-600' :
+                      'bg-gray-100 text-gray-500'
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                        <span className="text-xs font-mono font-semibold text-gray-500 w-14 shrink-0">{label}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{r.customer_name}</p>
+                          {r.notes && <p className="text-[11px] text-gray-400 truncate">{r.notes}</p>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Users size={11} />{r.party_size}
+                          </span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusCls}`}>
+                            {r.status}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {todayRes.length > 6 && (
+                    <Link href="/reservations" className="block text-center text-xs text-indigo-500 hover:text-indigo-600 pt-1">
+                      +{todayRes.length - 6} more today →
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Week at a glance */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <CalendarDays size={14} className="text-indigo-400" />
+                Next 7 days
+              </h3>
+              <div className="space-y-2">
+                {resStats.next_7_days.map((day, i) => {
+                  const date = new Date(day.date + 'T00:00:00')
+                  const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                  const maxCount = Math.max(...resStats.next_7_days.map(d => d.count), 1)
+                  const barW = day.count > 0 ? Math.max(8, Math.round((day.count / maxCount) * 100)) : 0
+                  return (
+                    <div key={day.date} className="flex items-center gap-3">
+                      <span className={`text-xs w-24 shrink-0 ${i === 0 ? 'font-semibold text-indigo-600' : 'text-gray-500'}`}>{dayName}</span>
+                      <div className="flex-1 h-5 bg-gray-50 rounded-full overflow-hidden">
+                        {barW > 0 && (
+                          <div
+                            className={`h-full rounded-full flex items-center px-2 ${i === 0 ? 'bg-indigo-500' : 'bg-indigo-200'}`}
+                            style={{ width: `${barW}%` }}
+                          />
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500 w-20 text-right shrink-0">
+                        {day.count > 0 ? `${day.count} res · ${day.covers} ppl` : <span className="text-gray-300">—</span>}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Today at a Glance */}
       {loading ? (

@@ -36,11 +36,16 @@ export default function Sidebar() {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(pathname.startsWith('/menu'))
   const [restaurantName, setRestaurantName] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     fetch('/api/restaurant/current')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.name) setRestaurantName(data.name) })
+      .catch(() => {})
+    fetch('/api/admin/check')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.isAdmin) setIsAdmin(true) })
       .catch(() => {})
   }, [])
 
@@ -129,18 +134,20 @@ export default function Sidebar() {
             </Link>
           )
         })}
-        <Link
-          href="/admin"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
-            pathname.startsWith('/admin')
-              ? 'bg-orange-500 text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-800'
-          )}
-        >
-          <Shield size={18} />
-          Platform Admin
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
+              pathname.startsWith('/admin')
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-800'
+            )}
+          >
+            <Shield size={18} />
+            Platform Admin
+          </Link>
+        )}
       </nav>
 
       {/* Bottom actions — always visible at the bottom */}

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ShoppingBag, Plus, LogOut, ArrowRight, MapPin, Store } from 'lucide-react'
+import { ShoppingBag, LogOut, ArrowRight, MapPin, Store } from 'lucide-react'
 
 interface Restaurant {
   id: string
@@ -154,14 +154,6 @@ export default function SelectRestaurantPage() {
           </div>
         )}
 
-        {/* Add new restaurant */}
-        <Link
-          href="/setup?new=1"
-          className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-gray-200 hover:border-orange-300 text-gray-400 hover:text-orange-500 rounded-2xl transition-colors font-medium text-sm"
-        >
-          <Plus size={16} />
-          Add Another Restaurant
-        </Link>
       </div>
     </div>
   )
