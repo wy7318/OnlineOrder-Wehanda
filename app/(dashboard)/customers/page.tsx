@@ -33,7 +33,7 @@ type SortField = 'name' | 'created_at' | 'last_order_at' | 'total_orders' | 'lif
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: 'asc' | 'desc' }) {
   if (field !== current) return <ChevronsUpDown size={12} className="text-gray-300" />
-  return dir === 'asc' ? <ChevronUp size={12} className="text-orange-500" /> : <ChevronDown size={12} className="text-orange-500" />
+  return dir === 'asc' ? <ChevronUp size={12} className="text-brand-500" /> : <ChevronDown size={12} className="text-brand-500" />
 }
 
 function initials(c: CustomerWithStats) {
@@ -177,7 +177,7 @@ export default function CustomersPage() {
             value={search}
             onChange={e => handleSearchChange(e.target.value)}
             placeholder="Search by name, email, or phone…"
-            className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-orange-400"
+            className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-brand-400"
           />
         </div>
 
@@ -186,14 +186,14 @@ export default function CustomersPage() {
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition',
             filtersOpen || activeFilterCount > 0
-              ? 'border-orange-400 bg-orange-50 text-orange-600'
+              ? 'border-brand-400 bg-brand-50 text-brand-600'
               : 'border-gray-300 text-gray-700 hover:bg-gray-50'
           )}
         >
           <Filter size={14} />
           Filters
           {activeFilterCount > 0 && (
-            <span className="bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+            <span className="bg-brand-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
               {activeFilterCount}
             </span>
           )}
@@ -213,7 +213,7 @@ export default function CustomersPage() {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-gray-700">Filters</p>
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="text-xs text-orange-500 hover:text-orange-600 flex items-center gap-1">
+              <button onClick={clearFilters} className="text-xs text-brand-500 hover:text-brand-600 flex items-center gap-1">
                 <X size={12} /> Clear all
               </button>
             )}
@@ -231,7 +231,7 @@ export default function CustomersPage() {
                     className={cn(
                       'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
                       acqSources.includes(opt.value)
-                        ? 'border-orange-500 bg-orange-50 text-orange-600'
+                        ? 'border-brand-500 bg-brand-50 text-brand-600'
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     )}
                   >
@@ -251,7 +251,7 @@ export default function CustomersPage() {
                     onClick={() => { setMktOptIn(v); setPage(1) }}
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-xs font-medium border transition',
-                      mktOptIn === v ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      mktOptIn === v ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     )}
                   >
                     {v === 'all' ? 'All' : v === 'true' ? 'Opted In' : 'Opted Out'}
@@ -268,14 +268,14 @@ export default function CustomersPage() {
                   type="number" min="0" placeholder="Min"
                   value={minOrders}
                   onChange={e => { setMinOrders(e.target.value); setPage(1) }}
-                  className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                  className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400"
                 />
                 <span className="text-gray-400 text-xs">—</span>
                 <input
                   type="number" min="0" placeholder="Max"
                   value={maxOrders}
                   onChange={e => { setMaxOrders(e.target.value); setPage(1) }}
-                  className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                  className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400"
                 />
               </div>
             </div>
@@ -288,14 +288,14 @@ export default function CustomersPage() {
                   type="date"
                   value={lastOrderFrom}
                   onChange={e => { setLastOrderFrom(e.target.value); setPage(1) }}
-                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400"
                 />
                 <span className="text-gray-400 text-xs">—</span>
                 <input
                   type="date"
                   value={lastOrderTo}
                   onChange={e => { setLastOrderTo(e.target.value); setPage(1) }}
-                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400"
                 />
               </div>
             </div>
@@ -307,7 +307,7 @@ export default function CustomersPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-16 flex justify-center">
-            <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : customers.length === 0 ? (
           <div className="py-16 text-center text-gray-400">
@@ -368,7 +368,7 @@ export default function CustomersPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 text-xs font-bold flex items-center justify-center shrink-0">
                           {initials(c)}
                         </div>
                         <div>
@@ -447,7 +447,7 @@ export default function CustomersPage() {
                   onClick={() => setPage(pg)}
                   className={cn(
                     'w-8 h-8 rounded-lg border text-xs transition',
-                    pg === page ? 'border-orange-500 bg-orange-50 text-orange-600 font-semibold' : 'border-gray-200 hover:bg-gray-50'
+                    pg === page ? 'border-brand-500 bg-brand-50 text-brand-600 font-semibold' : 'border-gray-200 hover:bg-gray-50'
                   )}
                 >
                   {pg}

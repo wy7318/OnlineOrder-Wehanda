@@ -18,8 +18,8 @@ export default function Header({ title, subtitle, actions, userEmail }: HeaderPr
         {actions}
         {userEmail && (
           <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-              <span className="text-orange-600 font-semibold text-xs">
+            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
+              <span className="text-brand-600 font-semibold text-xs">
                 {userEmail[0].toUpperCase()}
               </span>
             </div>

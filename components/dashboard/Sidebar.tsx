@@ -51,24 +51,24 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-800 shrink-0">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
             <ShoppingBag size={16} className="text-white" />
           </div>
-          <span className="font-bold text-white text-lg">OrderFlow</span>
+          <span className="font-bold text-white text-lg">Wehanda</span>
         </Link>
       </div>
 
       {/* Current restaurant indicator */}
       <Link
         href="/select-restaurant"
-        className="mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-orange-500/40 transition-all group shrink-0"
+        className="mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-brand-500/40 transition-all group shrink-0"
       >
         <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-0.5">Managing</p>
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-white truncate">
             {restaurantName ?? '—'}
           </p>
-          <ChevronRight size={13} className="text-gray-500 group-hover:text-orange-400 shrink-0 transition-colors" />
+          <ChevronRight size={13} className="text-gray-500 group-hover:text-brand-400 shrink-0 transition-colors" />
         </div>
       </Link>
 
@@ -81,7 +81,7 @@ export default function Sidebar() {
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
               pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-                ? 'bg-orange-500 text-white'
+                ? 'bg-brand-500 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-800'
             )}
           >
@@ -95,7 +95,7 @@ export default function Sidebar() {
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
               pathname.startsWith('/admin')
-                ? 'bg-orange-500 text-white'
+                ? 'bg-brand-500 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-800'
             )}
           >

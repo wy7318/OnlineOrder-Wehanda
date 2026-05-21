@@ -187,8 +187,8 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
               <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === stepIndex ? 'w-8 bg-orange-500' :
-                  i < stepIndex ? 'w-4 bg-orange-300' :
+                  i === stepIndex ? 'w-8 bg-brand-500' :
+                  i < stepIndex ? 'w-4 bg-brand-300' :
                   'w-4 bg-gray-200'
                 }`}
               />
@@ -205,13 +205,13 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
               {/* Party size */}
               <div>
                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-                  <Users size={15} className="text-orange-500" /> Party Size
+                  <Users size={15} className="text-brand-500" /> Party Size
                 </p>
                 <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-4">
                   <button
                     onClick={() => setPartySize(p => Math.max(1, p - 1))}
                     disabled={partySize <= 1}
-                    className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 hover:border-orange-400 hover:text-orange-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 hover:border-brand-400 hover:text-brand-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     −
                   </button>
@@ -222,13 +222,13 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                   <button
                     onClick={() => setPartySize(p => Math.min(maxParty, p + 1))}
                     disabled={partySize >= maxParty}
-                    className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 hover:border-orange-400 hover:text-orange-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 hover:border-brand-400 hover:text-brand-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>
                 </div>
                 {partySize >= maxParty && (
-                  <p className="text-xs text-orange-600 text-center mt-2">
+                  <p className="text-xs text-brand-600 text-center mt-2">
                     For parties over {maxParty}, please call us directly.
                   </p>
                 )}
@@ -237,7 +237,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
               {/* Calendar */}
               <div>
                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-                  <Calendar size={15} className="text-orange-500" /> Select Date
+                  <Calendar size={15} className="text-brand-500" /> Select Date
                 </p>
 
                 <div className="flex items-center justify-between mb-4">
@@ -281,11 +281,11 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                         className={`
                           aspect-square rounded-xl text-sm font-medium transition
                           ${isSelected
-                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                            ? 'bg-brand-500 text-white shadow-lg shadow-brand-200'
                             : sel
-                              ? 'hover:bg-orange-50 hover:text-orange-600 text-gray-800'
+                              ? 'hover:bg-brand-50 hover:text-brand-600 text-gray-800'
                               : 'text-gray-300 cursor-not-allowed'}
-                          ${isToday && !isSelected ? 'ring-1 ring-orange-400' : ''}
+                          ${isToday && !isSelected ? 'ring-1 ring-brand-400' : ''}
                         `}
                       >
                         {day.getDate()}
@@ -302,19 +302,19 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
             <div className="p-6">
               {selectedDateObj && (
                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-5 bg-gray-50 rounded-xl px-4 py-2.5">
-                  <Calendar size={13} className="text-orange-500 shrink-0" />
+                  <Calendar size={13} className="text-brand-500 shrink-0" />
                   <span>
                     {selectedDateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   </span>
                   <span className="text-gray-300 mx-0.5">·</span>
-                  <Users size={13} className="text-orange-500 shrink-0" />
+                  <Users size={13} className="text-brand-500 shrink-0" />
                   <span>{partySize} {partySize === 1 ? 'guest' : 'guests'}</span>
                 </div>
               )}
 
               {slotsLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div className="text-center py-14">
@@ -323,7 +323,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                   <p className="text-sm text-gray-400">Try a different date or smaller party size.</p>
                   <button
                     onClick={() => setStep('pick')}
-                    className="mt-5 text-sm text-orange-500 font-medium underline"
+                    className="mt-5 text-sm text-brand-500 font-medium underline"
                   >
                     Change date
                   </button>
@@ -345,9 +345,9 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                           className={`
                             py-3 px-2 rounded-xl text-sm font-medium transition text-center leading-tight
                             ${isSelected
-                              ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                              ? 'bg-brand-500 text-white shadow-lg shadow-brand-200'
                               : slot.available
-                                ? 'bg-gray-50 hover:bg-orange-50 hover:text-orange-600 text-gray-800 border border-gray-100 hover:border-orange-200'
+                                ? 'bg-gray-50 hover:bg-brand-50 hover:text-brand-600 text-gray-800 border border-gray-100 hover:border-brand-200'
                                 : 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'}
                           `}
                         >
@@ -371,7 +371,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
             <div className="p-6 space-y-5">
               {/* Summary card */}
               {selectedDateObj && (
-                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center gap-4">
+                <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-center gap-4">
                   <div className="text-center bg-white rounded-xl px-3 py-2 shadow-sm shrink-0">
                     <p className="text-[10px] text-gray-400 font-medium uppercase">
                       {selectedDateObj.toLocaleDateString('en-US', { month: 'short' })}
@@ -384,7 +384,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                     <p className="font-semibold text-gray-900">
                       {selectedDateObj.toLocaleDateString('en-US', { weekday: 'long' })}
                     </p>
-                    <p className="text-sm text-orange-600 font-semibold">{formatTime12h(selectedTime)}</p>
+                    <p className="text-sm text-brand-600 font-semibold">{formatTime12h(selectedTime)}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {partySize} {partySize === 1 ? 'guest' : 'guests'}
                     </p>
@@ -398,28 +398,28 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Full Name *"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 transition"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-400 transition"
                 />
                 <input
                   value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                   placeholder="Phone Number *"
                   type="tel"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 transition"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-400 transition"
                 />
                 <input
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                   placeholder="Email (optional)"
                   type="email"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 transition"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-400 transition"
                 />
                 <textarea
                   value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   placeholder="Special requests — allergies, occasion, seating preference…"
                   rows={2}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400 transition resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-400 transition resize-none"
                 />
               </div>
 
@@ -466,7 +466,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
             <button
               onClick={() => selectedDate && setStep('time')}
               disabled={!selectedDate}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition"
+              className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition"
             >
               {selectedDate
                 ? `See Times for ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
@@ -477,7 +477,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
             <button
               onClick={() => selectedTime && setStep('contact')}
               disabled={!selectedTime}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition"
+              className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition"
             >
               {selectedTime ? `Continue with ${formatTime12h(selectedTime)}` : 'Select a Time to Continue'}
             </button>
@@ -486,7 +486,7 @@ export default function ReservationModal({ restaurant, onClose, prefill, custome
             <button
               onClick={submit}
               disabled={submitting || !form.name.trim() || !form.phone.trim()}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition flex items-center justify-center gap-2"
+              className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-2xl transition flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

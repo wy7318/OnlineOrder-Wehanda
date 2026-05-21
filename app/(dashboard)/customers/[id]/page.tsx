@@ -376,7 +376,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading) return (
     <div className="flex justify-center py-24">
-      <div className="w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -405,7 +405,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <div className="flex flex-col items-center text-center mb-4">
               <div className={cn(
                 'w-16 h-16 rounded-full text-xl font-bold flex items-center justify-center mb-3',
-                customer.is_blocked ? 'bg-red-100 text-red-500' : 'bg-orange-100 text-orange-600'
+                customer.is_blocked ? 'bg-red-100 text-red-500' : 'bg-brand-100 text-brand-600'
               )}>
                 {initials(customer)}
               </div>
@@ -420,7 +420,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               {customer.email && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600 truncate flex-1">{customer.email}</span>
-                  <button onClick={() => copyToClipboard(customer.email!, 'email')} className="ml-2 text-gray-400 hover:text-orange-500 transition">
+                  <button onClick={() => copyToClipboard(customer.email!, 'email')} className="ml-2 text-gray-400 hover:text-brand-500 transition">
                     {copied === 'email' ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                   </button>
                 </div>
@@ -428,7 +428,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               {customer.phone && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{customer.phone}</span>
-                  <button onClick={() => copyToClipboard(customer.phone!, 'phone')} className="ml-2 text-gray-400 hover:text-orange-500 transition">
+                  <button onClick={() => copyToClipboard(customer.phone!, 'phone')} className="ml-2 text-gray-400 hover:text-brand-500 transition">
                     {copied === 'phone' ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                   </button>
                 </div>
@@ -453,7 +453,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 onClick={toggleMarketingOptIn}
                 className={cn(
                   'relative w-10 h-5 rounded-full transition-colors focus:outline-none',
-                  customer.marketing_opt_in ? 'bg-orange-500' : 'bg-gray-200'
+                  customer.marketing_opt_in ? 'bg-brand-500' : 'bg-gray-200'
                 )}
               >
                 <span className={cn(
@@ -516,9 +516,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
                 placeholder="Add tag…"
-                className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-400"
+                className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-brand-400"
               />
-              <button type="submit" disabled={tagLoading || !tagInput.trim()} className="p-1.5 bg-orange-500 text-white rounded-lg disabled:opacity-40 hover:bg-orange-600 transition">
+              <button type="submit" disabled={tagLoading || !tagInput.trim()} className="p-1.5 bg-brand-500 text-white rounded-lg disabled:opacity-40 hover:bg-brand-600 transition">
                 <Plus size={12} />
               </button>
             </form>
@@ -528,7 +528,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Segments</p>
-              <button onClick={() => setSegModalOpen(true)} className="text-orange-500 hover:text-orange-600 transition">
+              <button onClick={() => setSegModalOpen(true)} className="text-brand-500 hover:text-brand-600 transition">
                 <Plus size={14} />
               </button>
             </div>
@@ -552,7 +552,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dietary</p>
-              <button onClick={() => setDietModalOpen(true)} className="text-orange-500 hover:text-orange-600 transition">
+              <button onClick={() => setDietModalOpen(true)} className="text-brand-500 hover:text-brand-600 transition">
                 <Plus size={14} />
               </button>
             </div>
@@ -581,7 +581,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               onChange={e => handleNotesChange(e.target.value)}
               rows={4}
               placeholder="Notes visible only to staff…"
-              className="w-full text-xs text-gray-700 border border-gray-200 rounded-xl p-2.5 resize-none focus:outline-none focus:border-orange-400"
+              className="w-full text-xs text-gray-700 border border-gray-200 rounded-xl p-2.5 resize-none focus:outline-none focus:border-brand-400"
             />
           </div>
         </div>
@@ -618,7 +618,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <div>
               {ordersLoading ? (
                 <div className="flex justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : orders.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-12 text-center text-gray-400">
@@ -703,7 +703,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <div>
               {reservationsLoading ? (
                 <div className="flex justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : reservations.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-12 text-center text-gray-400">
@@ -724,11 +724,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     const dateObj = new Date(r.reservation_date + 'T00:00:00')
                     return (
                       <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
-                        <div className="text-center bg-orange-50 rounded-xl px-3 py-2 shrink-0 w-14">
-                          <p className="text-[10px] text-orange-400 font-medium uppercase">
+                        <div className="text-center bg-brand-50 rounded-xl px-3 py-2 shrink-0 w-14">
+                          <p className="text-[10px] text-brand-400 font-medium uppercase">
                             {dateObj.toLocaleDateString('en-US', { month: 'short' })}
                           </p>
-                          <p className="text-2xl font-bold text-orange-600 leading-none mt-0.5">
+                          <p className="text-2xl font-bold text-brand-600 leading-none mt-0.5">
                             {dateObj.getDate()}
                           </p>
                         </div>
@@ -737,7 +737,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                             <span className="text-sm font-semibold text-gray-900">
                               {dateObj.toLocaleDateString('en-US', { weekday: 'long' })}
                             </span>
-                            <span className="text-sm text-orange-600 font-medium">
+                            <span className="text-sm text-brand-600 font-medium">
                               {r.reservation_time.slice(0, 5)}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${colorClass}`}>
@@ -775,7 +775,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
               {eventsLoading ? (
                 <div className="flex justify-center py-12">
-                  <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : events.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-12 text-center text-gray-400">
@@ -795,7 +795,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                           const DevIcon = DEVICE_ICONS[evt.device_type] ?? Monitor
                           return (
                             <div key={evt.id} className="flex items-start gap-3 px-4 py-3">
-                              <div className="w-7 h-7 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-7 h-7 rounded-full bg-brand-50 text-brand-500 flex items-center justify-center shrink-0 mt-0.5">
                                 <Icon size={13} />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -846,7 +846,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 <div className="space-y-3">
                   {addresses.map(addr => (
                     <div key={addr.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3">
-                      <MapPin size={16} className="text-orange-400 shrink-0 mt-0.5" />
+                      <MapPin size={16} className="text-brand-400 shrink-0 mt-0.5" />
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-semibold text-gray-800">{addr.label}</p>
@@ -907,7 +907,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               key={seg.id}
               onClick={() => addSegment(seg.id)}
               disabled={segLoading}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50 transition text-left disabled:opacity-50"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition text-left disabled:opacity-50"
             >
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
               <div>

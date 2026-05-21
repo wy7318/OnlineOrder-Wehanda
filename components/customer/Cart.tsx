@@ -21,8 +21,8 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-3">
-          <ShoppingBag size={24} className="text-orange-300" />
+        <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mb-3">
+          <ShoppingBag size={24} className="text-brand-300" />
         </div>
         <p className="font-bold text-gray-700 text-sm mb-1">Your cart is empty</p>
         <p className="text-xs text-gray-400">Add items from the menu to get started</p>
@@ -53,19 +53,19 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
                 <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-orange-500 transition rounded"
+                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-brand-500 transition rounded"
                   >
                     <Minus size={12} />
                   </button>
                   <span className="w-5 text-center text-xs font-bold text-gray-800">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-orange-500 transition rounded"
+                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-brand-500 transition rounded"
                   >
                     <Plus size={12} />
                   </button>
                 </div>
-                <span className="font-bold text-orange-500 text-sm">{formatCurrency(item.line_total)}</span>
+                <span className="font-bold text-brand-500 text-sm">{formatCurrency(item.line_total)}</span>
               </div>
             </div>
             <button
@@ -95,7 +95,7 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
 
       <button
         onClick={onCheckout}
-        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-sm shadow-orange-200 text-sm"
+        className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-sm shadow-brand-200 text-sm"
       >
         Checkout · {formatCurrency(total)}
       </button>

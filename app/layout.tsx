@@ -3,7 +3,7 @@ import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 
 export const metadata: Metadata = {
-  title: 'OrderFlow — Restaurant Online Ordering SaaS',
+  title: 'Wehanda — Restaurant Online Ordering SaaS',
   description: 'The all-in-one online ordering platform for restaurants.',
 }
 

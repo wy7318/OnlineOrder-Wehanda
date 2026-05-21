@@ -206,7 +206,7 @@ function SetupContent() {
           {/* Restaurant Photos */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-              <ImageIcon size={17} className="text-orange-500" /> Restaurant Photos
+              <ImageIcon size={17} className="text-brand-500" /> Restaurant Photos
             </h3>
             <p className="text-xs text-gray-400 mb-5">These images appear on your public customer ordering page.</p>
 
@@ -217,7 +217,7 @@ function SetupContent() {
                 {(coverPreview || form.cover_image_url) ? (
                   <Image src={coverPreview || form.cover_image_url} alt="Cover preview" fill className="object-cover" />
                 ) : (
-                  <div className="h-full bg-gradient-to-br from-orange-100 via-amber-50 to-orange-50 flex items-center justify-center">
+                  <div className="h-full bg-gradient-to-br from-brand-100 via-amber-50 to-brand-50 flex items-center justify-center">
                     <span className="text-xs text-gray-400 font-medium">Cover photo will appear here</span>
                   </div>
                 )}
@@ -229,7 +229,7 @@ function SetupContent() {
                   {(logoPreview || form.logo_url) ? (
                     <Image src={logoPreview || form.logo_url} alt="Logo preview" width={40} height={40} className="object-cover w-full h-full" />
                   ) : (
-                    <div className="w-full h-full bg-orange-50 flex items-center justify-center text-base">🍣</div>
+                    <div className="w-full h-full bg-brand-50 flex items-center justify-center text-base">🍣</div>
                   )}
                 </div>
                 <span className="text-white text-xs font-bold drop-shadow">{form.name || 'Restaurant Name'}</span>
@@ -244,7 +244,7 @@ function SetupContent() {
               {/* Cover photo */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Cover Photo</p>
-                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-orange-300 transition group cursor-pointer bg-gray-50">
+                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-brand-300 transition group cursor-pointer bg-gray-50">
                   {(coverPreview || form.cover_image_url) ? (
                     <Image src={coverPreview || form.cover_image_url} alt="Cover" fill className="object-cover" />
                   ) : (
@@ -286,7 +286,7 @@ function SetupContent() {
               {/* Logo */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Restaurant Logo</p>
-                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-orange-300 transition group cursor-pointer bg-gray-50">
+                <div className="relative h-28 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-brand-300 transition group cursor-pointer bg-gray-50">
                   {(logoPreview || form.logo_url) ? (
                     <Image src={logoPreview || form.logo_url} alt="Logo" fill className="object-cover" />
                   ) : (
@@ -327,7 +327,7 @@ function SetupContent() {
             </div>
 
             {(logoFile || coverFile) && (
-              <p className="text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mt-4">
+              <p className="text-xs text-brand-600 bg-brand-50 border border-brand-100 rounded-xl px-3 py-2 mt-4">
                 You have unsaved photo changes — click <strong>Save Changes</strong> above to upload them.
               </p>
             )}
@@ -384,14 +384,14 @@ function SetupContent() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <CalendarDays size={18} className="text-orange-500" /> Reservations
+                <CalendarDays size={18} className="text-brand-500" /> Reservations
               </h3>
               <label className="flex items-center gap-2 cursor-pointer">
                 <div className="relative">
                   <input type="checkbox" className="sr-only peer"
                     checked={form.reservations_enabled}
                     onChange={e => setField('reservations_enabled', e.target.checked)} />
-                  <div className="w-10 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                  <div className="w-10 h-6 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
                   <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
                 </div>
                 <span className="text-sm font-medium text-gray-700">
@@ -443,7 +443,7 @@ function SetupContent() {
           {/* Operation Hours */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-900 mb-5 flex items-center gap-2">
-              <Clock size={18} className="text-orange-500" /> Operation Hours
+              <Clock size={18} className="text-brand-500" /> Operation Hours
             </h3>
             <Select label="Timezone" value={form.timezone} options={TIMEZONES}
               onChange={e => setField('timezone', e.target.value)} />
@@ -461,11 +461,11 @@ function SetupContent() {
                     <>
                       <input type="time" value={h.open_time} disabled={h.is_closed}
                         onChange={e => updateHour(h.day_of_week, 'open_time', e.target.value)}
-                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
+                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400" />
                       <span className="text-gray-400 text-sm">to</span>
                       <input type="time" value={h.close_time} disabled={h.is_closed}
                         onChange={e => updateHour(h.day_of_week, 'close_time', e.target.value)}
-                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400" />
+                        className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400" />
                     </>
                   )}
                 </div>
@@ -490,7 +490,7 @@ function SetupContent() {
                     <input type="checkbox" className="sr-only peer"
                       checked={form[opt.key as keyof typeof form] as boolean}
                       onChange={e => setField(opt.key as keyof typeof form, e.target.checked as boolean)} />
-                    <div className="w-10 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                    <div className="w-10 h-6 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
                   </div>
                   <div>
@@ -505,15 +505,15 @@ function SetupContent() {
           {/* Alert Sounds */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-              <Bell size={16} className="text-orange-500" /> Alert Sounds
+              <Bell size={16} className="text-brand-500" /> Alert Sounds
             </h3>
             <p className="text-xs text-gray-400 mb-5">Plays in this browser tab when new activity arrives</p>
 
             {/* Orders */}
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-[9px] font-bold text-orange-500">O</span>
+                <div className="w-5 h-5 bg-brand-100 rounded-full flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-brand-500">O</span>
                 </div>
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Orders</p>
               </div>
@@ -521,7 +521,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="orderSoundMode" value="none"
                     checked={orderSoundMode === 'none'} onChange={() => setOrderSoundMode('none')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">No sound</p>
                     <p className="text-xs text-gray-400">Silent — visual only</p>
@@ -530,7 +530,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="orderSoundMode" value="repeat"
                     checked={orderSoundMode === 'repeat'} onChange={() => setOrderSoundMode('repeat')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">Ring a set number of times</p>
                     {orderSoundMode === 'repeat' && (
@@ -538,7 +538,7 @@ function SetupContent() {
                         <span className="text-xs text-gray-500">Ring</span>
                         <input type="number" min={1} max={10} value={orderRepeatCount}
                           onChange={e => setOrderRepeatCount(Math.min(10, Math.max(1, Number(e.target.value))))}
-                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-400" />
+                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-brand-400" />
                         <span className="text-xs text-gray-500">time{orderRepeatCount !== 1 ? 's' : ''}</span>
                       </div>
                     )}
@@ -547,7 +547,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="orderSoundMode" value="until_click"
                     checked={orderSoundMode === 'until_click'} onChange={() => setOrderSoundMode('until_click')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">Ring until acknowledged</p>
                     <p className="text-xs text-gray-400">Repeats every 3 s until you click</p>
@@ -555,7 +555,7 @@ function SetupContent() {
                 </label>
               </div>
               <button type="button" onClick={() => playBell()}
-                className="mt-3 flex items-center gap-1.5 text-xs text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition">
+                className="mt-3 flex items-center gap-1.5 text-xs text-brand-600 border border-brand-200 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition">
                 <Bell size={12} /> Test order sound
               </button>
             </div>
@@ -572,7 +572,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="reservationSoundMode" value="none"
                     checked={reservationSoundMode === 'none'} onChange={() => setReservationSoundMode('none')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">No sound</p>
                     <p className="text-xs text-gray-400">Silent — visual only</p>
@@ -581,7 +581,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="reservationSoundMode" value="repeat"
                     checked={reservationSoundMode === 'repeat'} onChange={() => setReservationSoundMode('repeat')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">Ring a set number of times</p>
                     {reservationSoundMode === 'repeat' && (
@@ -589,7 +589,7 @@ function SetupContent() {
                         <span className="text-xs text-gray-500">Ring</span>
                         <input type="number" min={1} max={10} value={reservationRepeatCount}
                           onChange={e => setReservationRepeatCount(Math.min(10, Math.max(1, Number(e.target.value))))}
-                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-orange-400" />
+                          className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-brand-400" />
                         <span className="text-xs text-gray-500">time{reservationRepeatCount !== 1 ? 's' : ''}</span>
                       </div>
                     )}
@@ -598,7 +598,7 @@ function SetupContent() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="reservationSoundMode" value="until_click"
                     checked={reservationSoundMode === 'until_click'} onChange={() => setReservationSoundMode('until_click')}
-                    className="mt-0.5 accent-orange-500" />
+                    className="mt-0.5 accent-brand-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">Ring until acknowledged</p>
                     <p className="text-xs text-gray-400">Repeats every 3 s until you click</p>
@@ -613,9 +613,9 @@ function SetupContent() {
           </div>
 
           {restaurant && (
-            <div className="bg-orange-50 rounded-2xl border border-orange-100 p-6">
-              <p className="text-sm font-semibold text-orange-800 mb-1">Your public ordering page</p>
-              <p className="text-xs text-orange-600 break-all">/restaurant/{form.slug}</p>
+            <div className="bg-brand-50 rounded-2xl border border-brand-100 p-6">
+              <p className="text-sm font-semibold text-brand-800 mb-1">Your public ordering page</p>
+              <p className="text-xs text-brand-600 break-all">/restaurant/{form.slug}</p>
             </div>
           )}
         </div>

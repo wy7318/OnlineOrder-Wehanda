@@ -11,7 +11,7 @@ import Button from '@/components/ui/Button'
 import { formatTime12h, toDateStr, generateTimeSlots } from '@/lib/utils/slots'
 import type { Reservation, ReservationStatus, RestaurantHours } from '@/lib/types'
 
-const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400 bg-white transition'
+const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-400 bg-white transition'
 
 type NewRsvForm = {
   date: string; time: string; partySize: number
@@ -256,7 +256,7 @@ export default function ReservationsPage() {
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">{rsv.customer_name}</p>
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
-                        <span className={`font-medium ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>
+                        <span className={`font-medium ${isToday ? 'text-brand-600' : 'text-gray-700'}`}>
                           {dateLabel}
                         </span>
                         <span>·</span>
@@ -357,16 +357,16 @@ export default function ReservationsPage() {
                   className={`
                     relative aspect-square rounded-xl text-sm font-medium transition flex flex-col items-center justify-center
                     ${isSelected
-                      ? 'bg-orange-500 text-white shadow-md'
+                      ? 'bg-brand-500 text-white shadow-md'
                       : isToday
-                        ? 'bg-orange-50 text-orange-600 ring-1 ring-orange-300'
+                        ? 'bg-brand-50 text-brand-600 ring-1 ring-brand-300'
                         : 'hover:bg-gray-50 text-gray-800'}
                   `}
                 >
                   {day.getDate()}
                   {activeCount > 0 && (
                     <span className={`absolute bottom-1 text-[9px] font-bold ${
-                      isSelected ? 'text-orange-200' : hasPending ? 'text-amber-500' : 'text-green-500'
+                      isSelected ? 'text-brand-200' : hasPending ? 'text-amber-500' : 'text-green-500'
                     }`}>
                       ●
                     </span>
@@ -410,7 +410,7 @@ export default function ReservationsPage() {
           <div className="p-6 flex-1">
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : !selectedDate ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -526,11 +526,11 @@ export default function ReservationsPage() {
                                 })
                               }}
                               placeholder="Internal note (only you see this)…"
-                              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-orange-400"
+                              className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-400"
                             />
                             <button
                               onClick={() => saveNotes(rsv.id)}
-                              className="text-xs text-orange-500 font-semibold px-2 hover:text-orange-600"
+                              className="text-xs text-brand-500 font-semibold px-2 hover:text-brand-600"
                             >
                               Save
                             </button>
@@ -732,7 +732,7 @@ export default function ReservationsPage() {
               <button
                 onClick={handleCreateReservation}
                 disabled={creating || !newRsv.date || !newRsv.time || !newRsv.name.trim() || !newRsv.phone.trim()}
-                className="flex-1 py-2.5 text-sm bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition disabled:opacity-40"
+                className="flex-1 py-2.5 text-sm bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl transition disabled:opacity-40"
               >
                 {creating ? 'Creating…' : 'Create Reservation'}
               </button>

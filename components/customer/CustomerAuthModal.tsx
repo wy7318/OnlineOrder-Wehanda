@@ -46,8 +46,8 @@ export default function CustomerAuthModal({ restaurantSlug, onClose }: Props) {
 
         {sent ? (
           <div className="text-center py-4">
-            <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail size={24} className="text-orange-500" />
+            <div className="w-14 h-14 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail size={24} className="text-brand-500" />
             </div>
             <h2 className="text-lg font-bold text-gray-900 mb-2">Check your email</h2>
             <p className="text-sm text-gray-500">
@@ -55,7 +55,7 @@ export default function CustomerAuthModal({ restaurantSlug, onClose }: Props) {
             </p>
             <button
               onClick={() => { setSent(false); setEmail('') }}
-              className="mt-5 text-sm text-orange-500 hover:text-orange-600 font-medium"
+              className="mt-5 text-sm text-brand-500 hover:text-brand-600 font-medium"
             >
               Use a different email
             </button>
@@ -75,7 +75,7 @@ export default function CustomerAuthModal({ restaurantSlug, onClose }: Props) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-400"
                 />
               </div>
 
@@ -84,7 +84,7 @@ export default function CustomerAuthModal({ restaurantSlug, onClose }: Props) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
+                className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : 'Send magic link'}
               </button>

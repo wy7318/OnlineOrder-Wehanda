@@ -234,7 +234,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-gray-400 font-medium">Loading menu…</p>
       </div>
     </div>
@@ -242,7 +242,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
   if (notFound) return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-gray-50">
-      <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mb-5 text-4xl">🍽️</div>
+      <div className="w-20 h-20 bg-brand-50 rounded-3xl flex items-center justify-center mb-5 text-4xl">🍽️</div>
       <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Restaurant not found</h1>
       <p className="text-gray-500 max-w-xs">This restaurant page doesn&apos;t exist or isn&apos;t available right now.</p>
     </div>
@@ -266,14 +266,14 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
             </div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Order Placed!</h2>
             <p className="text-gray-500 text-sm mb-5">Your order has been received by the restaurant.</p>
-            <div className="bg-orange-50 border border-orange-100 rounded-2xl py-4 px-6 mb-5">
-              <p className="text-xs text-orange-500 font-bold uppercase tracking-widest mb-1">Order Number</p>
-              <p className="text-3xl font-extrabold text-orange-500">#{orderConfirmed.orderNumber}</p>
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl py-4 px-6 mb-5">
+              <p className="text-xs text-brand-500 font-bold uppercase tracking-widest mb-1">Order Number</p>
+              <p className="text-3xl font-extrabold text-brand-500">#{orderConfirmed.orderNumber}</p>
             </div>
             <p className="text-xs text-gray-400 mb-6">💳 Pay at the restaurant — card or cash accepted</p>
             <button
               onClick={() => setOrderConfirmed(null)}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl transition"
+              className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-2xl transition"
             >
               Continue Browsing
             </button>
@@ -318,7 +318,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             </>
           ) : (
-            <div className="h-full bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500" />
+            <div className="h-full bg-gradient-to-br from-brand-400 via-brand-500 to-amber-500" />
           )}
 
           {/* Restaurant info overlay */}
@@ -327,7 +327,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               {restaurant.logo_url ? (
                 <Image src={restaurant.logo_url} alt={restaurant.name} width={72} height={72} className="object-cover w-full h-full" />
               ) : (
-                <div className="w-full h-full bg-orange-50 flex items-center justify-center text-2xl">🍣</div>
+                <div className="w-full h-full bg-brand-50 flex items-center justify-center text-2xl">🍣</div>
               )}
             </div>
             <div className="flex-1 min-w-0 pb-1">
@@ -369,7 +369,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
           {restaurant.reservations_enabled && (
             <button
               onClick={() => setReservationOpen(true)}
-              className="ml-auto flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition shadow-sm"
+              className="ml-auto flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold rounded-xl transition shadow-sm"
             >
               <CalendarDays size={15} /> Reserve a Table
             </button>
@@ -388,8 +388,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   onClick={() => { setActiveCategory(cat.id); categoryRefs.current[cat.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                   className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition whitespace-nowrap ${
                     activeCategory === cat.id
-                      ? 'bg-orange-500 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'
+                      ? 'bg-brand-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-brand-500 hover:bg-brand-50'
                   }`}
                 >
                   {cat.name}
@@ -409,7 +409,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search the menu…"
-            className="w-full pl-11 pr-10 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-orange-400 shadow-sm transition"
+            className="w-full pl-11 pr-10 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-brand-400 shadow-sm transition"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
@@ -478,10 +478,10 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
           <div className="hidden lg:block w-80 shrink-0 sticky top-[57px]">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                <ShoppingBag size={18} className="text-orange-500" />
+                <ShoppingBag size={18} className="text-brand-500" />
                 <h2 className="font-extrabold text-gray-900">Your Order</h2>
                 {itemCount > 0 && (
-                  <span className="ml-auto bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{itemCount}</span>
+                  <span className="ml-auto bg-brand-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{itemCount}</span>
                 )}
               </div>
               <div className="p-5">
@@ -497,7 +497,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40">
           <button
             onClick={() => setCartOpen(true)}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl flex items-center justify-between px-5 shadow-2xl shadow-orange-300/40 transition"
+            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-between px-5 shadow-2xl shadow-brand-300/40 transition"
           >
             <div className="flex items-center gap-3">
               <span className="bg-white/20 text-white text-xs font-extrabold w-6 h-6 rounded-lg flex items-center justify-center">{itemCount}</span>
@@ -573,19 +573,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${[restaurant.pickup_enabled, restaurant.dine_in_enabled, restaurant.delivery_enabled].filter(Boolean).length}, 1fr)` }}>
                     {restaurant.pickup_enabled && (
                       <button onClick={() => setOrderType('pickup')}
-                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'pickup' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'pickup' ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
                         <span className="text-xl">🏃</span> Pickup
                       </button>
                     )}
                     {restaurant.dine_in_enabled && (
                       <button onClick={() => setOrderType('dine_in')}
-                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'dine_in' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'dine_in' ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
                         <span className="text-xl">🍽️</span> Dine In
                       </button>
                     )}
                     {restaurant.delivery_enabled && (
                       <button onClick={() => setOrderType('delivery')}
-                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'delivery' ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                        className={`py-3 rounded-2xl border-2 text-sm font-bold transition flex flex-col items-center gap-1.5 ${orderType === 'delivery' ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
                         <span className="text-xl">🚗</span> Delivery
                       </button>
                     )}
@@ -597,13 +597,13 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <p className="text-sm font-bold text-gray-700">Your Information</p>
                   <input value={checkoutForm.name} onChange={e => setCheckoutForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Full Name *" required
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 transition" />
                   <input value={checkoutForm.phone} onChange={e => setCheckoutForm(f => ({ ...f, phone: e.target.value }))}
                     placeholder="Phone Number *" required type="tel"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 transition" />
                   <input value={checkoutForm.email} onChange={e => setCheckoutForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="Email (optional)" type="email"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 transition" />
                 </div>
 
                 {/* Delivery address */}
@@ -612,10 +612,10 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                     <p className="text-sm font-bold text-gray-700">Delivery Address</p>
                     <input value={checkoutForm.delivery_address} onChange={e => setCheckoutForm(f => ({ ...f, delivery_address: e.target.value }))}
                       placeholder="Street Address *" required
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 transition" />
                     <input value={checkoutForm.delivery_instructions} onChange={e => setCheckoutForm(f => ({ ...f, delivery_instructions: e.target.value }))}
                       placeholder="Delivery instructions (optional)"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 transition" />
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 transition" />
                   </div>
                 )}
 
@@ -624,7 +624,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <p className="text-sm font-bold text-gray-700 mb-2">Special Instructions</p>
                   <textarea value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))}
                     placeholder="Allergies, special requests…" rows={2}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange-400 resize-none transition" />
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-400 resize-none transition" />
                 </div>
 
                 {/* Utensils */}
@@ -640,7 +640,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   </div>
                   <div className="relative shrink-0">
                     <input type="checkbox" className="sr-only peer" checked={wantsUtensils} onChange={e => setWantsUtensils(e.target.checked)} />
-                    <div className="w-11 h-6 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                    <div className="w-11 h-6 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow" />
                   </div>
                 </label>
@@ -651,15 +651,15 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <div className="flex flex-wrap gap-2">
                     {TIP_PRESETS.map(pct => (
                       <button key={pct} type="button" onClick={() => { setTipPercent(pct); setCustomTip('') }}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === pct ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === pct ? 'bg-brand-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                         {pct === 0 ? 'No tip' : `${pct}%`}
                         {pct > 0 && tipPercent === pct && subtotal > 0 && (
-                          <span className="ml-1 text-orange-200 text-xs">{formatCurrency(Math.round(subtotal * pct) / 100)}</span>
+                          <span className="ml-1 text-brand-200 text-xs">{formatCurrency(Math.round(subtotal * pct) / 100)}</span>
                         )}
                       </button>
                     ))}
                     <button type="button" onClick={() => setTipPercent(-1)}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === -1 ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === -1 ? 'bg-brand-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                       Custom
                     </button>
                   </div>
@@ -667,7 +667,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                     <div className="flex items-center gap-2 mt-3">
                       <span className="text-sm font-medium text-gray-500">$</span>
                       <input type="number" min="0" step="0.50" value={customTip} onChange={e => setCustomTip(e.target.value)} placeholder="0.00"
-                        className="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400" />
+                        className="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400" />
                     </div>
                   )}
                 </div>
@@ -702,7 +702,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <button
                 onClick={placeOrder}
                 disabled={checkoutLoading || !isOpen || !restaurant.online_ordering_enabled}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base shadow-lg shadow-orange-200/60"
+                className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-base shadow-lg shadow-brand-200/60"
               >
                 {checkoutLoading
                   ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -720,12 +720,12 @@ function MenuItemCard({ item, onClick }: { item: MenuItem & { tags: Tag[]; optio
   return (
     <button
       onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-100 transition-all duration-200 overflow-hidden text-left group"
+      className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-100 transition-all duration-200 overflow-hidden text-left group"
     >
       <div className="flex items-center p-4 gap-4">
         {/* Text content */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <h3 className="font-bold text-[15px] text-gray-900 leading-snug group-hover:text-orange-500 transition-colors">
+          <h3 className="font-bold text-[15px] text-gray-900 leading-snug group-hover:text-brand-500 transition-colors">
             {item.name}
           </h3>
           {item.description && (
@@ -754,12 +754,12 @@ function MenuItemCard({ item, onClick }: { item: MenuItem & { tags: Tag[]; optio
           {item.image_url ? (
             <Image src={item.image_url} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
-              <Utensils size={22} className="text-orange-200" />
+            <div className="w-full h-full bg-gradient-to-br from-brand-50 to-amber-50 flex items-center justify-center">
+              <Utensils size={22} className="text-brand-200" />
             </div>
           )}
           <div className="absolute bottom-1.5 right-1.5">
-            <div className="w-7 h-7 bg-orange-500 group-hover:bg-orange-600 rounded-full flex items-center justify-center shadow-md transition-colors">
+            <div className="w-7 h-7 bg-brand-500 group-hover:bg-brand-600 rounded-full flex items-center justify-center shadow-md transition-colors">
               <Plus size={15} className="text-white" />
             </div>
           </div>

@@ -62,7 +62,7 @@ export default function SelectRestaurantPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-400">Loading your restaurants…</p>
         </div>
       </div>
@@ -75,10 +75,10 @@ export default function SelectRestaurantPage() {
       <header className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
               <ShoppingBag size={16} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-lg">OrderFlow</span>
+            <span className="font-bold text-gray-900 text-lg">Wehanda</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-400 hidden sm:block">{userEmail}</span>
@@ -97,8 +97,8 @@ export default function SelectRestaurantPage() {
       <div className="max-w-3xl mx-auto px-4 py-12">
         {/* Title */}
         <div className="text-center mb-10">
-          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Store size={26} className="text-orange-500" />
+          <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Store size={26} className="text-brand-500" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Your Restaurants</h1>
           <p className="text-gray-500 mt-1.5 text-sm">Select a restaurant to open its dashboard</p>
@@ -112,16 +112,16 @@ export default function SelectRestaurantPage() {
                 key={r.id}
                 onClick={() => handleSelect(r.id)}
                 disabled={selecting !== null}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:border-orange-300 hover:shadow-md transition-all group disabled:opacity-60 disabled:cursor-wait"
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:border-brand-300 hover:shadow-md transition-all group disabled:opacity-60 disabled:cursor-wait"
               >
                 {/* Card header */}
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-11 h-11 bg-orange-50 rounded-xl flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 bg-brand-50 rounded-xl flex items-center justify-center shrink-0">
                     {r.logo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={r.logo_url} alt={r.name} className="w-11 h-11 rounded-xl object-cover" />
                     ) : (
-                      <ShoppingBag size={20} className="text-orange-500" />
+                      <ShoppingBag size={20} className="text-brand-500" />
                     )}
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
@@ -141,12 +141,12 @@ export default function SelectRestaurantPage() {
 
                 {/* CTA */}
                 <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-orange-500 group-hover:text-orange-600 transition">
+                  <span className="text-sm font-semibold text-brand-500 group-hover:text-brand-600 transition">
                     {selecting === r.id ? 'Opening…' : 'Open Dashboard'}
                   </span>
                   <ArrowRight
                     size={16}
-                    className="text-orange-400 group-hover:translate-x-1 transition-transform"
+                    className="text-brand-400 group-hover:translate-x-1 transition-transform"
                   />
                 </div>
               </button>

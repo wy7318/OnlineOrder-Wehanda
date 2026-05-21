@@ -169,12 +169,12 @@ export default function AdminPage() {
       <header className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
               <ShoppingBag size={16} className="text-white" />
             </div>
             <div>
-              <span className="font-bold text-gray-900">OrderFlow</span>
-              <span className="ml-2 text-[10px] font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full uppercase tracking-wide">Platform Admin</span>
+              <span className="font-bold text-gray-900">Wehanda</span>
+              <span className="ml-2 text-[10px] font-semibold bg-brand-100 text-brand-600 px-2 py-0.5 rounded-full uppercase tracking-wide">Platform Admin</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -203,7 +203,7 @@ export default function AdminPage() {
             {tab === 'restaurants' && (
               <button
                 onClick={() => setShowCreateRestaurant(true)}
-                className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                className="flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
               >
                 <Plus size={15} /> New Restaurant
               </button>
@@ -211,7 +211,7 @@ export default function AdminPage() {
             {tab === 'users' && (
               <button
                 onClick={() => setShowCreateUser(true)}
-                className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                className="flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
               >
                 <UserPlus size={15} /> New User
               </button>
@@ -237,7 +237,7 @@ export default function AdminPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : tab === 'restaurants' ? (
           <RestaurantsTable
@@ -469,7 +469,7 @@ function RestaurantsTable({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       onClick={() => onEnter(r)}
-                      className="flex items-center gap-1 text-xs font-semibold text-orange-500 hover:text-orange-600 bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg transition"
+                      className="flex items-center gap-1 text-xs font-semibold text-brand-500 hover:text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg transition"
                     >
                       <ChevronRight size={12} /> Enter
                     </button>
@@ -544,7 +544,7 @@ function UsersTable({ users }: { users: User[] }) {
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {u.restaurants.map(r => (
-                        <span key={r.id} className="text-[11px] bg-orange-50 text-orange-600 font-medium px-2 py-0.5 rounded-full">
+                        <span key={r.id} className="text-[11px] bg-brand-50 text-brand-600 font-medium px-2 py-0.5 rounded-full">
                           {r.name}
                         </span>
                       ))}

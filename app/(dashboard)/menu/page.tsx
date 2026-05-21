@@ -27,14 +27,14 @@ type ItemWithTags = MenuItem & { tags: TagType[] }
 type GroupWithOptions = OptionGroup & { options: Option[] }
 
 const PRESET_COLORS = ['#f97316','#ef4444','#22c55e','#3b82f6','#a855f7','#ec4899','#14b8a6','#f59e0b','#6366f1','#64748b']
-const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white'
-const BTN_PRIMARY = 'flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition disabled:opacity-50'
+const INPUT = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400 bg-white'
+const BTN_PRIMARY = 'flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition disabled:opacity-50'
 const BTN_GHOST = 'text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} className="shrink-0">
-      {checked ? <ToggleRight size={22} className="text-orange-500" /> : <ToggleLeft size={22} className="text-gray-300" />}
+      {checked ? <ToggleRight size={22} className="text-brand-500" /> : <ToggleLeft size={22} className="text-gray-300" />}
     </button>
   )
 }
@@ -84,19 +84,19 @@ function SortableCatRow({
   const subSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`mb-0.5 ${isDragging ? 'opacity-40' : ''}`}>
-      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-xl group cursor-pointer transition ${filterKey === cat.id ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
+      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-xl group cursor-pointer transition ${filterKey === cat.id ? 'bg-brand-50' : 'hover:bg-gray-50'}`}>
         <span {...attributes} {...listeners} className="text-gray-300 hover:text-gray-500 shrink-0 cursor-grab active:cursor-grabbing touch-none">
           <GripVertical size={11} />
         </span>
         <button onClick={() => onToggleExpand(cat.id)} className="text-gray-300 hover:text-gray-500 shrink-0 w-4">
           {cat.subcategories.length > 0 ? (expandedCats.has(cat.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />) : null}
         </button>
-        <button onClick={() => setFilterKey(cat.id)} className={`flex-1 text-left text-sm truncate font-medium ${filterKey === cat.id ? 'text-orange-600' : 'text-gray-700'}`}>
+        <button onClick={() => setFilterKey(cat.id)} className={`flex-1 text-left text-sm truncate font-medium ${filterKey === cat.id ? 'text-brand-600' : 'text-gray-700'}`}>
           {cat.name}
         </button>
         <span className="text-[10px] text-gray-400">{items.filter(i => i.category_id === cat.id).length}</span>
         <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0 transition-opacity">
-          <button onClick={() => openCatModal('sub', undefined, cat.id)} className="p-0.5 text-gray-300 hover:text-orange-500" title="Add subcategory"><Plus size={11} /></button>
+          <button onClick={() => openCatModal('sub', undefined, cat.id)} className="p-0.5 text-gray-300 hover:text-brand-500" title="Add subcategory"><Plus size={11} /></button>
           <button onClick={() => openCatModal('cat', cat)} className="p-0.5 text-gray-300 hover:text-gray-600" title="Edit"><Pencil size={11} /></button>
           <button onClick={() => deleteCat(cat.id, 'cat')} className="p-0.5 text-gray-300 hover:text-red-500" title="Delete"><Trash2 size={11} /></button>
         </div>
@@ -128,12 +128,12 @@ function SortableSubRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-1 pl-6 pr-2 py-1 rounded-xl group cursor-pointer transition ml-1 ${isDragging ? 'opacity-40' : ''} ${filterKey === `sub:${sub.id}` ? 'bg-orange-50' : 'hover:bg-gray-50'}`}
+      className={`flex items-center gap-1 pl-6 pr-2 py-1 rounded-xl group cursor-pointer transition ml-1 ${isDragging ? 'opacity-40' : ''} ${filterKey === `sub:${sub.id}` ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
     >
       <span {...attributes} {...listeners} className="text-gray-300 hover:text-gray-400 shrink-0 cursor-grab active:cursor-grabbing touch-none">
         <GripVertical size={10} />
       </span>
-      <button onClick={() => setFilterKey(`sub:${sub.id}`)} className={`flex-1 text-left text-xs truncate ${filterKey === `sub:${sub.id}` ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
+      <button onClick={() => setFilterKey(`sub:${sub.id}`)} className={`flex-1 text-left text-xs truncate ${filterKey === `sub:${sub.id}` ? 'text-brand-600 font-semibold' : 'text-gray-500'}`}>
         {sub.name}
       </button>
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0">
@@ -168,7 +168,7 @@ function SortableItemCard({
           <button {...attributes} {...listeners} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-gray-50 cursor-grab active:cursor-grabbing touch-none">
             <GripVertical size={12} className="text-gray-400" />
           </button>
-          <button onClick={() => openEdit(item)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-orange-50 transition">
+          <button onClick={() => openEdit(item)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-brand-50 transition">
             <Pencil size={12} className="text-gray-600" />
           </button>
           <button onClick={() => deleteItem(item.id)} className="w-7 h-7 bg-white rounded-lg shadow flex items-center justify-center hover:bg-red-50 transition">
@@ -179,7 +179,7 @@ function SortableItemCard({
       <div className="p-4 flex-1 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</h3>
-          <span className="font-bold text-orange-500 text-sm shrink-0">{formatCurrency(item.price)}</span>
+          <span className="font-bold text-brand-500 text-sm shrink-0">{formatCurrency(item.price)}</span>
         </div>
         {item.description && <p className="text-xs text-gray-400 line-clamp-2">{item.description}</p>}
         {item.tags.length > 0 && (
@@ -781,7 +781,7 @@ export default function MenuBuilderPage() {
         <nav className="flex-1 overflow-y-auto py-2 px-2">
           <button
             onClick={() => setFilterKey('all')}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition mb-1 ${filterKey === 'all' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition mb-1 ${filterKey === 'all' ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <UtensilsCrossed size={14} />
             <span className="flex-1 text-left">All Items</span>
@@ -809,10 +809,10 @@ export default function MenuBuilderPage() {
         </nav>
 
         <div className="px-3 py-3 border-t border-gray-100 space-y-1 shrink-0">
-          <button onClick={() => openCatModal('cat')} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-orange-500 transition border border-dashed border-gray-200 hover:border-orange-300">
+          <button onClick={() => openCatModal('cat')} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-brand-500 transition border border-dashed border-gray-200 hover:border-brand-300">
             <Plus size={12} /> Add Category
           </button>
-          <button onClick={() => setTagModal(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:bg-gray-50 hover:text-orange-500 transition">
+          <button onClick={() => setTagModal(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:bg-gray-50 hover:text-brand-500 transition">
             <Tag size={12} /> Manage Tags
           </button>
         </div>
@@ -830,7 +830,7 @@ export default function MenuBuilderPage() {
             <button
               onClick={downloadTemplate}
               title="Download CSV template"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300 transition"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-500 hover:border-brand-300 transition"
             >
               <FileDown size={14} /> Template
             </button>
@@ -840,8 +840,8 @@ export default function MenuBuilderPage() {
               title="Import items from CSV"
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border rounded-xl transition cursor-pointer ${
                 importing
-                  ? 'text-orange-500 border-orange-300 bg-orange-50'
-                  : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300'
+                  ? 'text-brand-500 border-brand-300 bg-brand-50'
+                  : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-brand-500 hover:border-brand-300'
               }`}
             >
               <Upload size={14} />
@@ -860,7 +860,7 @@ export default function MenuBuilderPage() {
               onClick={exportMenu}
               disabled={items.length === 0}
               title="Export menu to CSV"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-orange-500 hover:border-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-500 hover:border-brand-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download size={14} /> Export
             </button>
@@ -916,7 +916,7 @@ export default function MenuBuilderPage() {
                       quickToggle={quickToggle}
                     />
                   ))}
-                  <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-orange-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 transition group">
+                  <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-brand-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-500 transition group">
                     <Plus size={24} className="group-hover:scale-110 transition-transform" />
                     <span className="text-sm font-medium">Add Item</span>
                   </button>
@@ -950,7 +950,7 @@ export default function MenuBuilderPage() {
                     if (tab === 'options' && !editingItem) { toast('Save the item first to add options', 'info'); return }
                     setDrawerTab(tab)
                   }}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition flex items-center gap-1.5 ${drawerTab === tab ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-100'} ${tab === 'options' && !editingItem ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition flex items-center gap-1.5 ${drawerTab === tab ? 'bg-brand-500 text-white' : 'text-gray-500 hover:bg-gray-100'} ${tab === 'options' && !editingItem ? 'opacity-40 cursor-not-allowed' : ''}`}
                 >
                   {tab === 'details' ? <UtensilsCrossed size={13} /> : <SlidersHorizontal size={13} />}
                   {tab}
@@ -1008,7 +1008,7 @@ export default function MenuBuilderPage() {
                           setImageFile(file)
                           setImagePreview(file ? URL.createObjectURL(file) : '')
                         }}
-                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100 file:transition file:text-xs" />
+                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 file:transition file:text-xs" />
                     </div>
                   </Field>
 
@@ -1081,7 +1081,7 @@ export default function MenuBuilderPage() {
                           ))}
                           <div className="px-4 py-2">
                             <button onClick={() => { setOptionModal({ groupId: g.id }); setOptionForm({ name: '', additional_price: '0', is_active: true }) }}
-                              className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 font-medium">
+                              className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium">
                               <Plus size={12} /> Add Option
                             </button>
                           </div>
@@ -1090,7 +1090,7 @@ export default function MenuBuilderPage() {
                     </div>
                   ))}
                   <button onClick={() => { setGroupModal({}); setGroupForm({ name: '', is_required: false, min_select: 0, max_select: 1 }); setGroupOptionRows([{ name: '', additional_price: '0', is_active: true }]) }}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 hover:border-orange-300 text-gray-400 hover:text-orange-500 rounded-2xl transition text-sm font-medium">
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 hover:border-brand-300 text-gray-400 hover:text-brand-500 rounded-2xl transition text-sm font-medium">
                     <Plus size={14} /> Add Option Group
                   </button>
                 </div>
@@ -1163,7 +1163,7 @@ export default function MenuBuilderPage() {
                   <button
                     type="button"
                     onClick={() => setGroupOptionRows(prev => [...prev, { name: '', additional_price: '0', is_active: true }])}
-                    className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 font-medium"
+                    className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium"
                   >
                     <Plus size={12} /> Add Row
                   </button>
@@ -1178,13 +1178,13 @@ export default function MenuBuilderPage() {
                   {groupOptionRows.map((row, i) => (
                     <div key={i} className="grid grid-cols-[1fr_100px_32px_24px] gap-2 items-center px-3 py-2">
                       <input
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400 bg-white"
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400 bg-white"
                         placeholder={`Option ${i + 1}`}
                         value={row.name}
                         onChange={e => setGroupOptionRows(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
                       />
                       <input
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-orange-400 bg-white w-full"
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400 bg-white w-full"
                         type="number" min="0" step="0.01"
                         value={row.additional_price}
                         onChange={e => setGroupOptionRows(prev => prev.map((r, j) => j === i ? { ...r, additional_price: e.target.value } : r))}
@@ -1312,7 +1312,7 @@ export default function MenuBuilderPage() {
                 <tbody className="divide-y divide-gray-50">
                   {importPreview.map((row, idx) => {
                     const valid = isValidRow(row)
-                    const CELL = 'w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-orange-400 focus:outline-none px-1 py-0.5 text-sm transition'
+                    const CELL = 'w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-brand-400 focus:outline-none px-1 py-0.5 text-sm transition'
                     return (
                       <tr key={row._id} className={valid ? 'hover:bg-gray-50/40' : 'bg-red-50'}>
                         <td className="px-3 py-2 text-xs text-gray-400 select-none">{idx + 1}</td>
@@ -1396,7 +1396,7 @@ export default function MenuBuilderPage() {
                   <span>{importProgress}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-500 rounded-full transition-all duration-200" style={{ width: `${importProgress}%` }} />
+                  <div className="h-full bg-brand-500 rounded-full transition-all duration-200" style={{ width: `${importProgress}%` }} />
                 </div>
               </div>
             )}

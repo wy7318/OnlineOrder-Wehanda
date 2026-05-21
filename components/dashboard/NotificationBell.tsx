@@ -167,12 +167,12 @@ export default function NotificationBell() {
     <div ref={panelRef} className="relative">
       <button
         onClick={toggle}
-        className="relative p-2.5 rounded-xl bg-white border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition shadow-sm"
+        className="relative p-2.5 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition shadow-sm"
         aria-label="Notifications"
       >
         <Bell
           size={20}
-          className={`transition-colors ${unread > 0 ? 'text-orange-500' : 'text-gray-500'} ${ringing ? 'animate-bell-ring' : ''}`}
+          className={`transition-colors ${unread > 0 ? 'text-brand-500' : 'text-gray-500'} ${ringing ? 'animate-bell-ring' : ''}`}
         />
         {unread > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -205,10 +205,10 @@ export default function NotificationBell() {
                     key={n.id}
                     href="/orders"
                     onClick={() => setOpen(false)}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-brand-50 transition"
                   >
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <ShoppingBag size={14} className="text-orange-500" />
+                    <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <ShoppingBag size={14} className="text-brand-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900">New Order {n.orderNumber}</p>
@@ -251,7 +251,7 @@ export default function NotificationBell() {
             <Link
               href="/orders"
               onClick={() => setOpen(false)}
-              className="text-xs text-orange-500 hover:text-orange-600 font-medium transition"
+              className="text-xs text-brand-500 hover:text-brand-600 font-medium transition"
             >
               Orders →
             </Link>

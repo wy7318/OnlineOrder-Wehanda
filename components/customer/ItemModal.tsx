@@ -104,7 +104,7 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
             {/* Title + price */}
             <div className="flex items-start justify-between gap-3 mb-1">
               <h2 className="text-xl font-extrabold text-gray-900 leading-tight flex-1">{item.name}</h2>
-              <span className="font-extrabold text-orange-500 text-xl shrink-0">{formatCurrency(item.price)}</span>
+              <span className="font-extrabold text-brand-500 text-xl shrink-0">{formatCurrency(item.price)}</span>
             </div>
             {item.description && <p className="text-gray-500 text-sm leading-relaxed mb-5">{item.description}</p>}
             {!item.description && <div className="mb-5" />}
@@ -122,7 +122,7 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-gray-900 text-sm">{group.name}</h3>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        group.is_required ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500'
+                        group.is_required ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'
                       }`}>
                         {group.is_required ? 'Required' : 'Optional'}
                       </span>
@@ -146,14 +146,14 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
                             onClick={() => toggleOption(group.id, opt.id, group.max_select)}
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
                               isSelected
-                                ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
-                                : 'border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50'
+                                ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                                : 'border-gray-200 text-gray-700 hover:border-brand-300 hover:bg-brand-50'
                             }`}
                           >
                             {isSelected && <Check size={13} />}
                             {opt.name}
                             {opt.additional_price > 0 && (
-                              <span className={`text-xs font-bold ${isSelected ? 'text-orange-100' : 'text-green-600'}`}>
+                              <span className={`text-xs font-bold ${isSelected ? 'text-brand-100' : 'text-green-600'}`}>
                                 +{formatCurrency(opt.additional_price)}
                               </span>
                             )}
@@ -171,11 +171,11 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
                             key={opt.id}
                             onClick={() => toggleOption(group.id, opt.id, group.max_select)}
                             className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition text-left ${
-                              isSelected ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                              isSelected ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300 bg-white'
                             }`}
                           >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
-                              isSelected ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
+                              isSelected ? 'border-brand-500 bg-brand-500' : 'border-gray-300'
                             }`}>
                               {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
                             </div>
@@ -200,7 +200,7 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
                 onChange={e => setNotes(e.target.value)}
                 rows={2}
                 placeholder="No onions, extra sauce, allergies…"
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-orange-400 resize-none transition"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-brand-400 resize-none transition"
               />
             </div>
           </div>
@@ -212,14 +212,14 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
             <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
               <button
                 onClick={() => setQty(q => Math.max(1, q - 1))}
-                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-orange-500 transition rounded-lg hover:bg-white"
+                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-brand-500 transition rounded-lg hover:bg-white"
               >
                 <Minus size={15} />
               </button>
               <span className="w-8 text-center font-extrabold text-gray-900 text-sm">{qty}</span>
               <button
                 onClick={() => setQty(q => q + 1)}
-                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-orange-500 transition rounded-lg hover:bg-white"
+                className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-brand-500 transition rounded-lg hover:bg-white"
               >
                 <Plus size={15} />
               </button>
@@ -228,7 +228,7 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
           </div>
           <button
             onClick={handleAdd}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow-md shadow-orange-200/60"
+            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-extrabold py-4 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow-md shadow-brand-200/60"
           >
             <ShoppingBag size={17} /> Add to Cart · {formatCurrency(lineTotal)}
           </button>

@@ -8,6 +8,18 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Wehanda brand — #037FFC */
+  --color-brand-50:  #eff7ff;
+  --color-brand-100: #dceeff;
+  --color-brand-200: #b9dcff;
+  --color-brand-300: #7ec2ff;
+  --color-brand-400: #3aa3fe;
+  --color-brand-500: #037FFC;
+  --color-brand-600: #0266ca;
+  --color-brand-700: #024fa0;
+  --color-brand-800: #013b78;
+  --color-brand-900: #012952;
 }
 
 body {

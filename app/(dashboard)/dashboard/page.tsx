@@ -116,14 +116,14 @@ const TYPE_LABEL: Record<string, string> = {
 
 const TYPE_BADGE: Record<string, string> = {
   pickup: 'bg-blue-50 text-blue-600',
-  delivery: 'bg-orange-50 text-orange-600',
+  delivery: 'bg-brand-50 text-brand-600',
   dine_in: 'bg-teal-50 text-teal-600',
   takeout: 'bg-blue-50 text-blue-600',
 }
 
 const CHANNEL_COLOR: Record<string, string> = {
   pickup: 'bg-blue-400',
-  delivery: 'bg-orange-400',
+  delivery: 'bg-brand-400',
   dine_in: 'bg-teal-400',
   takeout: 'bg-blue-400',
 }
@@ -173,8 +173,8 @@ interface KpiProps {
 function KpiCard({ icon: Icon, label, value, valueColor, trend, sub }: KpiProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2.5">
-      <div className="w-8 h-8 bg-orange-50 rounded-xl flex items-center justify-center">
-        <Icon size={16} className="text-orange-500" />
+      <div className="w-8 h-8 bg-brand-50 rounded-xl flex items-center justify-center">
+        <Icon size={16} className="text-brand-500" />
       </div>
       <div>
         <p className="text-xs text-gray-400 mb-0.5">{label}</p>
@@ -436,7 +436,7 @@ export default function DashboardPage() {
           <Link
             href={`/restaurant/${restaurant?.slug ?? '#'}`}
             target="_blank"
-            className="text-xs text-orange-500 border border-orange-200 px-3 py-1.5 rounded-xl hover:bg-orange-50 transition"
+            className="text-xs text-brand-500 border border-brand-200 px-3 py-1.5 rounded-xl hover:bg-brand-50 transition"
           >
             View Public Page ↗
           </Link>
@@ -462,13 +462,13 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-            <Flame size={14} className="text-orange-500" />
+            <Flame size={14} className="text-brand-500" />
             Live Kitchen Queue
             {queue.length > 0 && (
-              <span className="ml-1 bg-orange-100 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full">{queue.length}</span>
+              <span className="ml-1 bg-brand-100 text-brand-600 text-xs font-bold px-2 py-0.5 rounded-full">{queue.length}</span>
             )}
           </h2>
-          <Link href="/orders" className="text-xs text-orange-500 hover:text-orange-600">All orders →</Link>
+          <Link href="/orders" className="text-xs text-brand-500 hover:text-brand-600">All orders →</Link>
         </div>
 
         {queue.length === 0 ? (
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
                     <span className="text-xs font-semibold text-gray-600">{col.label}</span>
                     {orders.length > 0 && (
-                      <span className="text-xs font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">{orders.length}</span>
+                      <span className="text-xs font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">{orders.length}</span>
                     )}
                   </div>
                   {/* Order cards */}
@@ -518,7 +518,7 @@ export default function DashboardPage() {
                     )}
                     {extra > 0 && (
                       <div className="px-3 py-2 text-center">
-                        <Link href="/orders" className="text-xs text-gray-400 hover:text-orange-500 transition">
+                        <Link href="/orders" className="text-xs text-gray-400 hover:text-brand-500 transition">
                           +{extra} more order{extra !== 1 ? 's' : ''}
                         </Link>
                       </div>
@@ -746,7 +746,7 @@ export default function DashboardPage() {
               { label: 'Completed', value: completedCount, color: 'text-green-600' },
               { label: 'Cancelled', value: cancelledCount, color: 'text-red-500' },
               { label: 'In Progress', value: inProgressCount, color: 'text-blue-600' },
-              { label: 'Active Queue', value: queue.length, color: 'text-orange-600' },
+              { label: 'Active Queue', value: queue.length, color: 'text-brand-600' },
             ].map(item => (
               <div key={item.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
                 <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
@@ -761,7 +761,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-sm font-semibold text-gray-700">Daily revenue target</h3>
                 {restaurant?.daily_revenue_target ? (
-                  <span className={`text-sm font-bold ${pacePercent! >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                  <span className={`text-sm font-bold ${pacePercent! >= 100 ? 'text-green-600' : 'text-brand-600'}`}>
                     {pacePercent}% of daily target
                   </span>
                 ) : null}
@@ -776,7 +776,7 @@ export default function DashboardPage() {
                   <div className="relative">
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${pacePercent! >= 100 ? 'bg-green-500' : pacePercent! >= 60 ? 'bg-orange-500' : 'bg-red-400'}`}
+                        className={`h-full rounded-full transition-all ${pacePercent! >= 100 ? 'bg-green-500' : pacePercent! >= 60 ? 'bg-brand-500' : 'bg-red-400'}`}
                         style={{ width: `${pacePercent}%` }}
                       />
                     </div>
@@ -794,12 +794,12 @@ export default function DashboardPage() {
                     placeholder="Set daily target $"
                     value={targetInput}
                     onChange={e => setTargetInput(e.target.value)}
-                    className="flex-1 max-w-[160px] text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-orange-400"
+                    className="flex-1 max-w-[160px] text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-400"
                   />
                   <button
                     onClick={handleSaveTarget}
                     disabled={savingTarget}
-                    className="text-sm bg-orange-500 text-white px-4 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition"
+                    className="text-sm bg-brand-500 text-white px-4 py-1.5 rounded-lg hover:bg-brand-600 disabled:opacity-50 transition"
                   >
                     Save
                   </button>
@@ -892,7 +892,7 @@ export default function DashboardPage() {
                     const isBottom = ov.bottom_item?.name === item.name
                     return (
                       <div key={item.name} className="flex items-center gap-3">
-                        <span className={`w-5 h-5 text-xs font-bold rounded-full flex items-center justify-center shrink-0 ${isBottom ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-600'}`}>
+                        <span className={`w-5 h-5 text-xs font-bold rounded-full flex items-center justify-center shrink-0 ${isBottom ? 'bg-red-50 text-red-500' : 'bg-brand-50 text-brand-600'}`}>
                           {isBottom ? '↓' : idx + 1}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -937,10 +937,10 @@ export default function DashboardPage() {
                 <Link
                   key={a.href}
                   href={a.href}
-                  className="flex items-center gap-2 p-3 bg-white rounded-xl border border-gray-100 hover:border-orange-200 hover:shadow-sm transition group text-sm"
+                  className="flex items-center gap-2 p-3 bg-white rounded-xl border border-gray-100 hover:border-brand-200 hover:shadow-sm transition group text-sm"
                 >
-                  <div className="w-8 h-8 bg-orange-50 group-hover:bg-orange-100 rounded-lg flex items-center justify-center transition">
-                    <a.icon size={15} className="text-orange-500" />
+                  <div className="w-8 h-8 bg-brand-50 group-hover:bg-brand-100 rounded-lg flex items-center justify-center transition">
+                    <a.icon size={15} className="text-brand-500" />
                   </div>
                   <span className="font-medium text-gray-700 text-sm">{a.label}</span>
                 </Link>

@@ -20,21 +20,21 @@ type FullOrderItem = OrderItem & {
 
 const KANBAN_COLS: { status: OrderStatus; label: string; dotCls: string; headerCls: string }[] = [
   { status: 'new',       label: 'New',             dotCls: 'bg-blue-500',   headerCls: 'border-blue-100 bg-blue-50/60' },
-  { status: 'accepted',  label: 'Accepted',         dotCls: 'bg-orange-500', headerCls: 'border-orange-100 bg-orange-50/60' },
+  { status: 'accepted',  label: 'Accepted',         dotCls: 'bg-brand-500', headerCls: 'border-brand-100 bg-brand-50/60' },
   { status: 'preparing', label: 'Preparing',        dotCls: 'bg-amber-500',  headerCls: 'border-amber-100 bg-amber-50/60' },
   { status: 'ready',     label: 'Ready for Pickup', dotCls: 'bg-green-500',  headerCls: 'border-green-100 bg-green-50/60' },
 ]
 
 const ADVANCE: Partial<Record<OrderStatus, { label: string; cls: string; next: OrderStatus }>> = {
   new:       { label: 'Accept Order',  cls: 'bg-emerald-500 hover:bg-emerald-600 text-white',  next: 'accepted' },
-  accepted:  { label: 'Start Preparing', cls: 'bg-orange-500 hover:bg-orange-600 text-white',  next: 'preparing' },
+  accepted:  { label: 'Start Preparing', cls: 'bg-brand-500 hover:bg-brand-600 text-white',  next: 'preparing' },
   preparing: { label: 'Mark Ready',    cls: 'bg-blue-500 hover:bg-blue-600 text-white',         next: 'ready' },
   ready:     { label: 'Complete',      cls: 'bg-gray-700 hover:bg-gray-800 text-white',         next: 'completed' },
 }
 
 const TYPE_BADGE: Record<string, string> = {
   pickup:   'bg-blue-50 text-blue-600 border-blue-100',
-  delivery: 'bg-orange-50 text-orange-600 border-orange-100',
+  delivery: 'bg-brand-50 text-brand-600 border-brand-100',
   dine_in:  'bg-teal-50 text-teal-700 border-teal-100',
   takeout:  'bg-blue-50 text-blue-600 border-blue-100',
 }
@@ -195,12 +195,12 @@ export default function OrdersPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Order #, name, phone…"
-              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-orange-400 w-56"
+              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-brand-400 w-56"
             />
           </div>
           <button
             onClick={() => loadOrders()}
-            className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:text-orange-500 hover:border-orange-200 transition"
+            className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:text-brand-500 hover:border-brand-200 transition"
           >
             <RefreshCw size={15} />
           </button>
@@ -246,7 +246,7 @@ export default function OrdersPage() {
                     <div
                       key={order.id}
                       onClick={() => openModal(order)}
-                      className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 cursor-pointer hover:border-orange-200 hover:shadow-md transition-all group"
+                      className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 cursor-pointer hover:border-brand-200 hover:shadow-md transition-all group"
                     >
                       {/* Row 1: order # + type + age */}
                       <div className="flex items-center gap-1.5 mb-2">
@@ -270,7 +270,7 @@ export default function OrdersPage() {
                       <p className="text-xs text-gray-400 mb-2">
                         {itemCount} item{itemCount !== 1 ? 's' : ''}
                         {order.order_type === 'delivery' && order.delivery_address && (
-                          <span className="ml-1 text-orange-500">· Delivery</span>
+                          <span className="ml-1 text-brand-500">· Delivery</span>
                         )}
                       </p>
 
@@ -425,7 +425,7 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
               order.status === 'cancelled' ? 'bg-red-100 text-red-600' :
               order.status === 'ready' ? 'bg-green-100 text-green-700' :
               order.status === 'preparing' ? 'bg-amber-100 text-amber-700' :
-              order.status === 'accepted' ? 'bg-orange-100 text-orange-700' :
+              order.status === 'accepted' ? 'bg-brand-100 text-brand-700' :
               'bg-blue-100 text-blue-700'
             }`}>
               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -459,8 +459,8 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
 
           {/* Delivery address */}
           {order.delivery_address && (
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
-              <p className="text-[10px] font-semibold text-orange-600 uppercase tracking-wider mb-1">Delivery Address</p>
+            <div className="bg-brand-50 border border-brand-100 rounded-xl p-3">
+              <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider mb-1">Delivery Address</p>
               <p className="text-sm text-gray-800">{order.delivery_address}</p>
               {order.delivery_instructions && (
                 <p className="text-xs text-gray-500 mt-0.5">{order.delivery_instructions}</p>
@@ -494,7 +494,7 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
                   <div key={item.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-xl">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 text-sm">
-                        <span className="text-orange-600 font-bold">{item.quantity}×</span> {item.item_name_snapshot}
+                        <span className="text-brand-600 font-bold">{item.quantity}×</span> {item.item_name_snapshot}
                       </p>
                       {item.order_item_options.map(opt => (
                         <p key={opt.id} className="text-xs text-gray-500 mt-0.5">

@@ -13,7 +13,7 @@ const variants = {
   warning: 'bg-yellow-100 text-yellow-700',
   danger: 'bg-red-100 text-red-700',
   info: 'bg-blue-100 text-blue-700',
-  orange: 'bg-orange-100 text-orange-700',
+  orange: 'bg-brand-100 text-brand-700',
 }
 
 export default function Badge({ children, variant = 'default', className, style }: BadgeProps) {

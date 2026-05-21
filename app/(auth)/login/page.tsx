@@ -55,7 +55,7 @@ export default function LoginPage() {
         />
 
         <div className="text-right">
-          <Link href="/forgot-password" className="text-sm text-orange-500 hover:text-orange-600">
+          <Link href="/forgot-password" className="text-sm text-brand-500 hover:text-brand-600">
             Forgot password?
           </Link>
         </div>
@@ -67,7 +67,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Don&apos;t have an account?{' '}
-        <Link href="/register" className="text-orange-500 hover:text-orange-600 font-medium">
+        <Link href="/register" className="text-brand-500 hover:text-brand-600 font-medium">
           Create one free
         </Link>
       </p>

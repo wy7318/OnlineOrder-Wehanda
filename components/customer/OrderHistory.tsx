@@ -41,7 +41,7 @@ export default function OrderHistory({ restaurantId, onClose }: Props) {
       <div className="relative w-full max-w-md bg-white h-full flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <h2 className="font-bold text-gray-900 flex items-center gap-2">
-            <Package size={18} className="text-orange-500" /> My Orders
+            <Package size={18} className="text-brand-500" /> My Orders
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
             <X size={20} />
@@ -51,7 +51,7 @@ export default function OrderHistory({ restaurantId, onClose }: Props) {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : orders.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
