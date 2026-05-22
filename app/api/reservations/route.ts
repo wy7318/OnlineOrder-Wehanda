@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { reservationConfirmationEmail } from '@/lib/email/reservationConfirmation'
+import { reservationConfirmedEmail } from '@/lib/email/reservationConfirmed'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 
     const { data: restaurant } = await supabase
       .from('restaurants')
-      .select('id, name, address, phone, is_active, reservations_enabled, reservation_capacity, reservation_max_party_size')
+      .select('id, name, address, phone, is_active, reservations_enabled, reservation_auto_confirm, reservation_capacity, reservation_max_party_size')
       .eq('id', restaurant_id)
       .single()
 
@@ -122,6 +123,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const autoConfirm = restaurant.reservation_auto_confirm ?? false
+
     const { data, error } = await supabase
       .from('reservations')
       .insert({
@@ -133,7 +136,7 @@ export async function POST(request: Request) {
         reservation_date,
         reservation_time,
         notes: notes || null,
-        status: 'pending',
+        status: autoConfirm ? 'confirmed' : 'pending',
         customer_user_id: customer_user_id ?? null,
       })
       .select()
@@ -141,9 +144,9 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Send reservation confirmation email (fire-and-forget)
+    // Send email: confirmed immediately (auto-confirm ON) or pending receipt (auto-confirm OFF)
     if (data.customer_email) {
-      const { subject, html } = reservationConfirmationEmail({
+      const emailParams = {
         restaurantName: restaurant.name,
         restaurantPhone: restaurant.phone ?? null,
         restaurantAddress: restaurant.address ?? null,
@@ -153,7 +156,10 @@ export async function POST(request: Request) {
         reservationTime: data.reservation_time,
         notes: data.notes ?? null,
         reservationId: data.id,
-      })
+      }
+      const { subject, html } = autoConfirm
+        ? reservationConfirmedEmail(emailParams)
+        : reservationConfirmationEmail(emailParams)
       sendEmail({ to: data.customer_email, subject, html }).catch(() => {})
     }
 

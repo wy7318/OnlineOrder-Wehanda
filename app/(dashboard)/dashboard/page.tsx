@@ -11,7 +11,7 @@ import {
   DollarSign, ShoppingBag, Clock, XCircle, Users, RefreshCw,
   AlertTriangle, CheckCircle, ArrowUpRight, ArrowDownRight,
   Flame, BarChart2, UtensilsCrossed, Plus, Settings, TrendingUp,
-  CalendarDays, CalendarCheck2, CalendarClock, UserCheck,
+  CalendarDays, CalendarCheck2, CalendarClock, UserCheck, Send,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils/helpers'
 
@@ -202,6 +202,9 @@ export default function DashboardPage() {
   const [savingTarget, setSavingTarget] = useState(false)
   const [todayRes, setTodayRes] = useState<ReservationSummary[]>([])
   const [resStats, setResStats] = useState<ReservationStats | null>(null)
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [reportSending, setReportSending] = useState(false)
+  const [reportResult, setReportResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const queueRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchOverview = useCallback(async (p: Period) => {
@@ -239,9 +242,36 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchQueue()
     fetchReservations()
+    fetch('/api/user/role')
+      .then(r => r.json())
+      .then(d => setIsPlatformAdmin(d.role === 'platform_admin'))
+      .catch(() => {})
     queueRef.current = setInterval(fetchQueue, 30000)
     return () => { if (queueRef.current) clearInterval(queueRef.current) }
   }, [fetchQueue, fetchReservations])
+
+  const handleSendReport = async () => {
+    if (!restaurant?.id || reportSending) return
+    setReportSending(true)
+    setReportResult(null)
+    try {
+      const res = await fetch('/api/admin/send-monthly-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: restaurant.id }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        setReportResult({ ok: true, msg: `Sent to ${json.email} (${json.period})` })
+      } else {
+        setReportResult({ ok: false, msg: json.error ?? 'Failed to send' })
+      }
+    } catch {
+      setReportResult({ ok: false, msg: 'Network error' })
+    } finally {
+      setReportSending(false)
+    }
+  }
 
   const handleSaveTarget = async () => {
     const val = parseFloat(targetInput)
@@ -440,8 +470,27 @@ export default function DashboardPage() {
           >
             View Public Page ↗
           </Link>
+          {isPlatformAdmin && (
+            <button
+              onClick={handleSendReport}
+              disabled={reportSending || !restaurant?.id}
+              className="flex items-center gap-1.5 text-xs bg-violet-600 text-white px-3 py-1.5 rounded-xl hover:bg-violet-700 disabled:opacity-50 transition font-medium"
+              title={`Send ${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} report to restaurant owner`}
+            >
+              <Send size={12} />
+              {reportSending ? 'Sending…' : 'Send Monthly Report'}
+            </button>
+          )}
         </div>
       </div>
+
+      {isPlatformAdmin && reportResult && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium ${reportResult.ok ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-600'}`}>
+          {reportResult.ok ? <CheckCircle size={13} /> : <AlertTriangle size={13} />}
+          {reportResult.msg}
+          <button onClick={() => setReportResult(null)} className="ml-auto text-current opacity-50 hover:opacity-100">✕</button>
+        </div>
+      )}
 
       {/* Alert bar */}
       {alert && (

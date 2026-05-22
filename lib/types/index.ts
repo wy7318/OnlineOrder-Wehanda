@@ -32,6 +32,7 @@ export interface Restaurant {
   reservation_max_party_size: number
   reservation_advance_days: number
   reservation_min_notice_hours: number
+  reservation_auto_confirm: boolean
   cuisine_types: string[]
   is_active: boolean
   created_at: string

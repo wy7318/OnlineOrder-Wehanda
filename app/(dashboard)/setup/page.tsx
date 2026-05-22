@@ -82,6 +82,7 @@ function SetupContent() {
     dine_in_enabled: false, delivery_enabled: false,
     tax_rate: 0,
     reservations_enabled: false,
+    reservation_auto_confirm: false,
     reservation_capacity: 20,
     reservation_max_party_size: 10,
     reservation_advance_days: 30,
@@ -109,6 +110,7 @@ function SetupContent() {
           delivery_enabled: r.delivery_enabled,
           tax_rate: r.tax_rate ?? 0,
           reservations_enabled: r.reservations_enabled ?? false,
+          reservation_auto_confirm: r.reservation_auto_confirm ?? false,
           reservation_capacity: r.reservation_capacity ?? 20,
           reservation_max_party_size: r.reservation_max_party_size ?? 10,
           reservation_advance_days: r.reservation_advance_days ?? 30,
@@ -466,7 +468,31 @@ function SetupContent() {
             </div>
 
             {form.reservations_enabled && (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                {/* Auto-confirm toggle */}
+                <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Auto-confirm reservations</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      When ON, new bookings are immediately confirmed and customers receive a confirmation email.
+                      When OFF, bookings stay pending until you review and confirm them manually.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer shrink-0 mt-0.5">
+                    <div className="relative">
+                      <input type="checkbox" className="sr-only peer"
+                        checked={form.reservation_auto_confirm}
+                        onChange={e => setField('reservation_auto_confirm', e.target.checked)} />
+                      <div className="w-10 h-6 bg-gray-200 peer-checked:bg-green-500 rounded-full transition-colors" />
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 w-14">
+                      {form.reservation_auto_confirm ? 'On' : 'Off'}
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
                 <Input
                   label="Capacity per time slot (people)"
                   type="number" min="1" max="500"
@@ -495,6 +521,7 @@ function SetupContent() {
                   onChange={e => setField('reservation_min_notice_hours', parseInt(e.target.value) || 0)}
                   hint="Earliest a customer can book before the slot."
                 />
+                </div>
               </div>
             )}
 
