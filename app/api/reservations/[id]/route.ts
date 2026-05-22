@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail } from '@/lib/email'
+import { reservationConfirmedEmail } from '@/lib/email/reservationConfirmed'
 
 export async function PATCH(
   request: Request,
@@ -28,6 +30,31 @@ export async function PATCH(
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Send confirmation email when owner marks as confirmed
+    if (status === 'confirmed' && data.customer_email) {
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('name, phone, address')
+        .eq('id', data.restaurant_id)
+        .single()
+
+      if (restaurant) {
+        const { subject, html } = reservationConfirmedEmail({
+          restaurantName: restaurant.name,
+          restaurantPhone: restaurant.phone ?? null,
+          restaurantAddress: restaurant.address ?? null,
+          customerName: data.customer_name,
+          partySize: data.party_size,
+          reservationDate: data.reservation_date,
+          reservationTime: data.reservation_time,
+          notes: data.notes ?? null,
+          reservationId: data.id,
+        })
+        sendEmail({ to: data.customer_email, subject, html }).catch(() => {})
+      }
+    }
+
     return NextResponse.json(data)
   } catch (err) {
     console.error('Reservation PATCH error:', err)

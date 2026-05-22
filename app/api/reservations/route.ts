@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail } from '@/lib/email'
+import { reservationConfirmationEmail } from '@/lib/email/reservationConfirmation'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 
     const { data: restaurant } = await supabase
       .from('restaurants')
-      .select('id, is_active, reservations_enabled, reservation_capacity, reservation_max_party_size')
+      .select('id, name, address, phone, is_active, reservations_enabled, reservation_capacity, reservation_max_party_size')
       .eq('id', restaurant_id)
       .single()
 
@@ -138,6 +140,22 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Send reservation confirmation email (fire-and-forget)
+    if (data.customer_email) {
+      const { subject, html } = reservationConfirmationEmail({
+        restaurantName: restaurant.name,
+        restaurantPhone: restaurant.phone ?? null,
+        restaurantAddress: restaurant.address ?? null,
+        customerName: data.customer_name,
+        partySize: data.party_size,
+        reservationDate: data.reservation_date,
+        reservationTime: data.reservation_time,
+        notes: data.notes ?? null,
+        reservationId: data.id,
+      })
+      sendEmail({ to: data.customer_email, subject, html }).catch(() => {})
+    }
 
     // Emit reservation_made event (fire-and-forget)
     if (customerId) {

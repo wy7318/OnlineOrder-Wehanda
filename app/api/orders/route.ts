@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateOrderNumber } from '@/lib/utils/helpers'
+import { sendEmail } from '@/lib/email'
+import { orderConfirmationEmail } from '@/lib/email/orderConfirmation'
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
     // Verify restaurant exists and is active
     const { data: restaurant, error: rErr } = await supabase
       .from('restaurants')
-      .select('id, is_active, online_ordering_enabled, tax_rate')
+      .select('id, name, address, phone, is_active, online_ordering_enabled, tax_rate')
       .eq('id', restaurant_id)
       .single()
 
@@ -156,6 +158,41 @@ export async function POST(request: Request) {
           }))
         )
       }
+    }
+
+    // Send order confirmation email (fire-and-forget)
+    if (order.customer_email) {
+      const { subject, html } = orderConfirmationEmail({
+        restaurantName: restaurant.name,
+        restaurantPhone: restaurant.phone ?? null,
+        restaurantAddress: restaurant.address ?? null,
+        customerName: order.customer_name,
+        orderNumber: order.order_number,
+        orderType: order.order_type,
+        subtotal: order.subtotal,
+        taxAmount: order.tax_amount,
+        tipAmount: order.fee_amount,
+        totalAmount: order.total_amount,
+        orderNotes: order.order_notes ?? null,
+        deliveryAddress: order.delivery_address ?? null,
+        items: items.map((item: {
+          item_name_snapshot: string
+          quantity: number
+          line_total: number
+          options?: Array<{ option_group_name_snapshot: string; option_name_snapshot: string }>
+          notes?: string | null
+        }) => ({
+          name: item.item_name_snapshot,
+          quantity: item.quantity,
+          lineTotal: item.line_total,
+          options: (item.options ?? []).map(o => ({
+            groupName: o.option_group_name_snapshot,
+            optionName: o.option_name_snapshot,
+          })),
+          notes: item.notes ?? null,
+        })),
+      })
+      sendEmail({ to: order.customer_email, subject, html }).catch(() => {})
     }
 
     // Emit order_placed event for AI event log (fire-and-forget)
