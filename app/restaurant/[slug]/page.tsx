@@ -362,6 +362,15 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   <span className="text-white/70 text-xs flex items-center gap-1"><Phone size={11} /> {restaurant.phone}</span>
                 )}
               </div>
+              {(restaurant.cuisine_types ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {restaurant.cuisine_types.map(c => (
+                    <span key={c} className="px-2 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-medium backdrop-blur-sm border border-white/20">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -12,10 +12,26 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed } from 'lucide-react'
 import Image from 'next/image'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
+
+const CUISINE_OPTIONS = [
+  // World cuisines
+  'American', 'Italian', 'Mexican', 'Chinese', 'Japanese', 'Korean', 'Thai',
+  'Indian', 'Mediterranean', 'Vietnamese', 'Filipino', 'French', 'Spanish',
+  'Greek', 'Middle Eastern', 'Caribbean', 'Hawaiian',
+  // Food styles
+  'Pizza', 'Burgers', 'Sandwiches', 'Sushi', 'Tacos', 'Ramen', 'Noodles',
+  'BBQ', 'Wings', 'Fried Chicken', 'Seafood', 'Steak',
+  // Meal occasions
+  'Breakfast & Brunch', 'Fast Food', 'Street Food', 'Fine Dining',
+  // Diet / lifestyle
+  'Healthy', 'Salads', 'Vegan', 'Vegetarian',
+  // Sweets & drinks
+  'Desserts', 'Bakery', 'Ice Cream', 'Coffee & Tea', 'Bubble Tea', 'Juice Bar',
+]
 
 const TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
@@ -52,6 +68,7 @@ function SetupContent() {
   } = useNotificationSettings()
   const [loading, setLoading] = useState(false)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [cuisineTypes, setCuisineTypes] = useState<string[]>([])
   const [hours, setHours] = useState(defaultHours())
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState('')
@@ -81,6 +98,7 @@ function SetupContent() {
 
       if (r) {
         setRestaurant(r)
+        setCuisineTypes(r.cuisine_types ?? [])
         setForm({
           name: r.name, slug: r.slug, address: r.address ?? '',
           phone: r.phone ?? '', email: r.email ?? '', website: r.website ?? '',
@@ -144,13 +162,15 @@ function SetupContent() {
       if (coverFile) { const u = await uploadRestaurantImage(coverFile, 'cover', restaurantId!); if (u) coverUrl = u }
 
       const { error } = await supabase.from('restaurants').update({
-        ...form, logo_url: logoUrl, cover_image_url: coverUrl, updated_at: new Date().toISOString(),
+        ...form, logo_url: logoUrl, cover_image_url: coverUrl,
+        cuisine_types: cuisineTypes, updated_at: new Date().toISOString(),
       }).eq('id', restaurant.id)
       if (error) { toast(error.message, 'error'); setLoading(false); return }
     } else {
       // Create restaurant first (no images yet)
       const { data, error } = await supabase.from('restaurants').insert({
-        ...form, logo_url: null, cover_image_url: null, owner_user_id: user.id, is_active: true,
+        ...form, logo_url: null, cover_image_url: null,
+        cuisine_types: cuisineTypes, owner_user_id: user.id, is_active: true,
       }).select().single()
       if (error) { toast(error.message, 'error'); setLoading(false); return }
       restaurantId = data.id
@@ -346,6 +366,49 @@ function SetupContent() {
               <Textarea label="Description" placeholder="Tell customers about your restaurant…"
                 value={form.description} onChange={e => setField('description', e.target.value)} />
             </div>
+          </div>
+
+          {/* Cuisine Types */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+              <UtensilsCrossed size={17} className="text-brand-500" /> Cuisine & Category
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">
+              Select all that apply — shown to customers on your public page. Pick up to 5.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CUISINE_OPTIONS.map(c => {
+                const selected = cuisineTypes.includes(c)
+                const atMax = cuisineTypes.length >= 5
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      if (selected) {
+                        setCuisineTypes(prev => prev.filter(x => x !== c))
+                      } else if (!atMax) {
+                        setCuisineTypes(prev => [...prev, c])
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition select-none ${
+                      selected
+                        ? 'bg-brand-500 text-white border-brand-500'
+                        : atMax
+                          ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300 hover:text-brand-600'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                )
+              })}
+            </div>
+            {cuisineTypes.length > 0 && (
+              <p className="text-xs text-brand-600 mt-3 font-medium">
+                {cuisineTypes.length}/5 selected: {cuisineTypes.join(', ')}
+              </p>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
