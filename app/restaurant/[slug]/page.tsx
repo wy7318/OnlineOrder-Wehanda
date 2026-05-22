@@ -6,13 +6,16 @@ import { useCartStore } from '@/store/cart'
 import { isRestaurantOpen } from '@/lib/utils/hours'
 import { formatCurrency } from '@/lib/utils/helpers'
 import Image from 'next/image'
-import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Package, Plus } from 'lucide-react'
+import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Plus } from 'lucide-react'
 import ItemModal from '@/components/customer/ItemModal'
 import Cart from '@/components/customer/Cart'
 import ReservationModal from '@/components/customer/ReservationModal'
 import CustomerAuthModal from '@/components/customer/CustomerAuthModal'
 import CustomerProfileModal from '@/components/customer/CustomerProfileModal'
 import OrderHistory from '@/components/customer/OrderHistory'
+import CustomerMenu from '@/components/customer/CustomerMenu'
+import ReservationHistory from '@/components/customer/ReservationHistory'
+import CustomerSettingsPanel from '@/components/customer/CustomerSettingsPanel'
 import type { Category, CustomerProfile, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
 import type { Session } from '@supabase/supabase-js'
 import { use } from 'react'
@@ -52,6 +55,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false)
+  const [reservationHistoryOpen, setReservationHistoryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   const itemCount = cartStore.itemCount()
@@ -119,6 +124,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     const supabase = createClient()
     await supabase.auth.signOut()
     setOrderHistoryOpen(false)
+    setReservationHistoryOpen(false)
+    setSettingsOpen(false)
   }
 
   async function loadRestaurant() {
@@ -300,20 +307,13 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         {/* Auth controls */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
           {customerSession ? (
-            <>
-              <button
-                onClick={() => setOrderHistoryOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-black/35 backdrop-blur-sm text-white rounded-xl text-sm font-semibold hover:bg-black/55 transition"
-              >
-                <Package size={14} /> My Orders
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-1.5 px-3 py-2 bg-black/35 backdrop-blur-sm text-white rounded-xl text-sm font-semibold hover:bg-black/55 transition"
-              >
-                <User size={14} /> {customerProfile?.display_name?.split(' ')[0] ?? 'Account'}
-              </button>
-            </>
+            <CustomerMenu
+              profile={customerProfile}
+              onMyOrders={() => setOrderHistoryOpen(true)}
+              onMyReservations={() => setReservationHistoryOpen(true)}
+              onSettings={() => setSettingsOpen(true)}
+              onSignOut={handleSignOut}
+            />
           ) : (
             <button
               onClick={() => setAuthModalOpen(true)}
@@ -568,6 +568,24 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
       {/* ── Order History ── */}
       {orderHistoryOpen && restaurant && <OrderHistory restaurantId={restaurant.id} onClose={() => setOrderHistoryOpen(false)} />}
+
+      {/* ── Reservation History ── */}
+      {reservationHistoryOpen && restaurant && (
+        <ReservationHistory restaurantId={restaurant.id} onClose={() => setReservationHistoryOpen(false)} />
+      )}
+
+      {/* ── Customer Settings ── */}
+      {settingsOpen && customerSession && customerProfile && (
+        <CustomerSettingsPanel
+          profile={customerProfile}
+          email={customerSession.user.email ?? ''}
+          onSaved={updated => {
+            setCustomerProfile(updated)
+            setCheckoutForm(f => ({ ...f, name: updated.display_name, phone: updated.phone }))
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {/* ── Checkout Modal ── */}
       {checkoutOpen && (

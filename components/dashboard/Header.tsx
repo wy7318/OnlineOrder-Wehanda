@@ -11,8 +11,8 @@ export default function Header({ title, subtitle, actions, userEmail }: HeaderPr
   return (
     <div className="flex items-center justify-between mb-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {subtitle && <p className="text-gray-500 text-sm mt-0.5">{subtitle}</p>}
+        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+        {subtitle && <p className="text-gray-500 text-[15px] mt-0.5">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-3">
         {actions}

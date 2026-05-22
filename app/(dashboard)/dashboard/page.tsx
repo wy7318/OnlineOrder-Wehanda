@@ -177,7 +177,7 @@ function KpiCard({ icon: Icon, label, value, valueColor, trend, sub }: KpiProps)
         <Icon size={16} className="text-brand-500" />
       </div>
       <div>
-        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+        <p className="text-sm text-gray-400 mb-0.5">{label}</p>
         <p className={`text-[22px] font-bold leading-tight ${valueColor ?? 'text-gray-900'}`}>{value}</p>
       </div>
       {trend && (
@@ -414,10 +414,10 @@ export default function DashboardPage() {
       {/* Top bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900">
             {loading ? 'Dashboard' : (restaurant?.name ?? 'Dashboard')}
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-[15px] text-gray-400 mt-0.5">
             {period === 'today' ? "Today's overview" : period === 'yesterday' ? 'Yesterday' : 'This week'} · live queue refreshes every 30s
           </p>
         </div>
@@ -461,7 +461,7 @@ export default function DashboardPage() {
       {/* Live Kitchen Queue */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+          <h2 className="text-[15px] font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
             <Flame size={14} className="text-brand-500" />
             Live Kitchen Queue
             {queue.length > 0 && (
@@ -535,7 +535,7 @@ export default function DashboardPage() {
       {resStats && (resStats.today_total > 0 || resStats.this_week_total > 0) && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
               <CalendarDays size={14} className="text-indigo-500" />
               Reservations
               {resStats.today_pending > 0 && (

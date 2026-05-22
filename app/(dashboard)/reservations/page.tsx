@@ -233,7 +233,7 @@ export default function ReservationsPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <h2 className="font-semibold text-amber-800 text-sm">
+            <h2 className="font-semibold text-amber-800 text-[15px]">
               {pendingTotal} reservation{pendingTotal !== 1 ? 's' : ''} awaiting confirmation
             </h2>
           </div>

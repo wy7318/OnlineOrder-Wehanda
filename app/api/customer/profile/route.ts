@@ -72,5 +72,15 @@ export async function PATCH(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Propagate name/phone to all CRM customer records linked to this auth user
+  // (covers every restaurant they have ordered/reserved at)
+  const crmUpdate: Record<string, string> = {}
+  if (update.display_name) crmUpdate.name = update.display_name
+  if (update.phone) crmUpdate.phone = update.phone
+  if (Object.keys(crmUpdate).length > 0) {
+    await admin.from('customers').update(crmUpdate).eq('auth_user_id', user.id)
+  }
+
   return NextResponse.json(data)
 }

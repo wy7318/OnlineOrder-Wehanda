@@ -182,8 +182,8 @@ export default function OrdersPage() {
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+          <p className="text-[15px] text-gray-400 mt-0.5">
             {activeCount} active · {newCount > 0 && <span className="text-blue-600 font-medium">{newCount} new</span>}
             {newCount === 0 && 'all caught up'}
           </p>
@@ -223,7 +223,7 @@ export default function OrdersPage() {
               <div className={`flex items-center justify-between px-3 py-2.5 border-b ${col.headerCls}`}>
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${col.dotCls}`} />
-                  <span className="text-sm font-semibold text-gray-700">{col.label}</span>
+                  <span className="text-[15px] font-semibold text-gray-700">{col.label}</span>
                 </div>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colOrders.length > 0 ? `${col.dotCls} text-white` : 'bg-gray-200 text-gray-500'}`}>
                   {colOrders.length}

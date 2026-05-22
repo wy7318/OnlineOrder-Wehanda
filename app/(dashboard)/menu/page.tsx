@@ -775,7 +775,7 @@ export default function MenuBuilderPage() {
       {/* Left: Category Panel */}
       <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
         <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Menu Builder</h2>
+          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Menu Builder</h2>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2 px-2">
@@ -822,8 +822,8 @@ export default function MenuBuilderPage() {
       <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shrink-0 gap-3 flex-wrap">
           <div>
-            <h1 className="text-base font-bold text-gray-900">{filterLabel}</h1>
-            <p className="text-xs text-gray-400">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-lg font-bold text-gray-900">{filterLabel}</h1>
+            <p className="text-sm text-gray-400">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Download template */}

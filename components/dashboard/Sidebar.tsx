@@ -63,9 +63,9 @@ export default function Sidebar() {
         href="/select-restaurant"
         className="mx-3 mt-3 mb-1 px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-brand-500/40 transition-all group shrink-0"
       >
-        <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-0.5">Managing</p>
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Managing</p>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-white truncate">
+          <p className="text-[15px] font-semibold text-white truncate">
             {restaurantName ?? '—'}
           </p>
           <ChevronRight size={13} className="text-gray-500 group-hover:text-brand-400 shrink-0 transition-colors" />
@@ -79,13 +79,13 @@ export default function Sidebar() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition',
               pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
                 ? 'bg-brand-500 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-800'
             )}
           >
-            <item.icon size={18} />
+            <item.icon size={20} />
             {item.label}
           </Link>
         ))}
@@ -93,13 +93,13 @@ export default function Sidebar() {
           <Link
             href="/admin"
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition',
               pathname.startsWith('/admin')
                 ? 'bg-brand-500 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-800'
             )}
           >
-            <Shield size={18} />
+            <Shield size={20} />
             Platform Admin
           </Link>
         )}
@@ -109,16 +109,16 @@ export default function Sidebar() {
       <div className="px-3 py-4 border-t border-gray-800 space-y-0.5 shrink-0">
         <Link
           href="/select-restaurant"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] text-gray-400 hover:text-white hover:bg-gray-800 transition"
         >
-          <Store size={18} />
+          <Store size={20} />
           Switch Restaurant
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] text-gray-400 hover:text-white hover:bg-gray-800 transition"
         >
-          <LogOut size={18} />
+          <LogOut size={20} />
           Sign Out
         </button>
       </div>

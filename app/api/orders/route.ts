@@ -35,21 +35,73 @@ export async function POST(request: Request) {
     const tip = Math.max(0, fee_amount ?? 0)
     const total_amount = Math.round((subtotal + tax_amount + tip) * 100) / 100
 
-    // Upsert customer — capture marketing opt-in preference
+    // Resolve CRM customer record
+    // Logged-in: auth_user_id is the stable identity — survives phone changes.
+    // Guest: fall back to phone upsert (unchanged behavior).
     let customerId: string | null = null
-    if (customer_email || customer_phone) {
-      const mktOptIn = marketing_opt_in !== false // default true unless explicitly false
-      const customerData: Record<string, unknown> = {
-        restaurant_id, name: customer_name, phone: customer_phone, email: customer_email || null,
+    if (customer_phone) {
+      const mktOptIn = marketing_opt_in !== false
+      const mktFields: Record<string, unknown> = {
         marketing_opt_in: mktOptIn,
+        ...(mktOptIn ? { marketing_opt_in_at: new Date().toISOString() } : {}),
       }
-      if (mktOptIn) customerData.marketing_opt_in_at = new Date().toISOString()
-      const { data: customer } = await supabase
-        .from('customers')
-        .upsert(customerData, { onConflict: 'restaurant_id,phone' })
-        .select('id')
-        .single()
-      customerId = customer?.id ?? null
+
+      if (customer_user_id) {
+        // 1. Find existing record linked to this auth user at this restaurant
+        const { data: byAuth } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('restaurant_id', restaurant_id)
+          .eq('auth_user_id', customer_user_id)
+          .maybeSingle()
+
+        if (byAuth) {
+          // Update contact info in case name/phone changed in profile settings
+          await supabase.from('customers')
+            .update({ name: customer_name, phone: customer_phone, email: customer_email || null, ...mktFields })
+            .eq('id', byAuth.id)
+          customerId = byAuth.id
+        } else {
+          // 2. Claim an existing phone-matched guest record and link it to this auth user
+          const { data: byPhone } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('restaurant_id', restaurant_id)
+            .eq('phone', customer_phone)
+            .maybeSingle()
+
+          if (byPhone) {
+            await supabase.from('customers')
+              .update({ auth_user_id: customer_user_id, name: customer_name, email: customer_email || null, ...mktFields })
+              .eq('id', byPhone.id)
+            customerId = byPhone.id
+          } else {
+            // 3. Truly new customer — insert with auth linkage
+            const { data: newC } = await supabase
+              .from('customers')
+              .insert({
+                restaurant_id, name: customer_name, phone: customer_phone,
+                email: customer_email || null, auth_user_id: customer_user_id,
+                ...mktFields,
+              })
+              .select('id')
+              .single()
+            customerId = newC?.id ?? null
+          }
+        }
+      } else {
+        // Guest order — upsert by phone (no auth user)
+        const customerData: Record<string, unknown> = {
+          restaurant_id, name: customer_name, phone: customer_phone,
+          email: customer_email || null, ...mktFields,
+        }
+        const { data: guest } = await supabase
+          .from('customers')
+          .upsert(customerData, { onConflict: 'restaurant_id,phone' })
+          .select('id')
+          .single()
+        customerId = guest?.id ?? null
+      }
     }
 
     // Create order

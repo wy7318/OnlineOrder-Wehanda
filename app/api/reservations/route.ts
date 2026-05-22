@@ -65,21 +65,59 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This time slot is fully booked' }, { status: 409 })
     }
 
-    // Upsert CRM customer record (match by phone within restaurant)
+    // Resolve CRM customer record — same auth_user_id-first strategy as orders
     let customerId: string | null = null
     if (customer_phone) {
-      const { data: customer } = await supabase
-        .from('customers')
-        .upsert({
-          restaurant_id,
-          name: customer_name,
-          phone: customer_phone,
-          email: customer_email || null,
-          ...(customer_user_id ? { auth_user_id: customer_user_id } : {}),
-        }, { onConflict: 'restaurant_id,phone' })
-        .select('id')
-        .single()
-      customerId = customer?.id ?? null
+      if (customer_user_id) {
+        const { data: byAuth } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('restaurant_id', restaurant_id)
+          .eq('auth_user_id', customer_user_id)
+          .maybeSingle()
+
+        if (byAuth) {
+          await supabase.from('customers')
+            .update({ name: customer_name, phone: customer_phone, email: customer_email || null })
+            .eq('id', byAuth.id)
+          customerId = byAuth.id
+        } else {
+          const { data: byPhone } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('restaurant_id', restaurant_id)
+            .eq('phone', customer_phone)
+            .maybeSingle()
+
+          if (byPhone) {
+            await supabase.from('customers')
+              .update({ auth_user_id: customer_user_id, name: customer_name, email: customer_email || null })
+              .eq('id', byPhone.id)
+            customerId = byPhone.id
+          } else {
+            const { data: newC } = await supabase
+              .from('customers')
+              .insert({
+                restaurant_id, name: customer_name, phone: customer_phone,
+                email: customer_email || null, auth_user_id: customer_user_id,
+              })
+              .select('id')
+              .single()
+            customerId = newC?.id ?? null
+          }
+        }
+      } else {
+        // Guest reservation — upsert by phone
+        const { data: guest } = await supabase
+          .from('customers')
+          .upsert({
+            restaurant_id, name: customer_name, phone: customer_phone,
+            email: customer_email || null,
+          }, { onConflict: 'restaurant_id,phone' })
+          .select('id')
+          .single()
+        customerId = guest?.id ?? null
+      }
     }
 
     const { data, error } = await supabase
