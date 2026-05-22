@@ -351,6 +351,7 @@ export interface OrderItem {
   quantity: number
   notes: string | null
   line_total: number
+  added_from_upsell: boolean
   created_at: string
   order_item_options?: OrderItemOption[]
 }
@@ -385,6 +386,7 @@ export interface CartItem {
   notes: string
   selected_options: CartOption[]
   line_total: number
+  added_from_upsell?: boolean
 }
 
 // ── Public Restaurant View (for customer portal) ──────────────

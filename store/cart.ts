@@ -37,6 +37,7 @@ export const useCartStore = create<CartState>()(
                 ...item,
                 id,
                 line_total: calcLineTotal(item.price, item.selected_options, item.quantity),
+                added_from_upsell: item.added_from_upsell ?? false,
               }],
             }
           }
@@ -49,6 +50,7 @@ export const useCartStore = create<CartState>()(
                 ...item,
                 id,
                 line_total: calcLineTotal(item.price, item.selected_options, item.quantity),
+                added_from_upsell: item.added_from_upsell ?? false,
               },
             ],
           }

@@ -141,6 +141,7 @@ export async function POST(request: Request) {
           quantity: item.quantity,
           notes: item.notes,
           line_total: item.line_total,
+          added_from_upsell: item.added_from_upsell ?? false,
         })
         .select()
         .single()

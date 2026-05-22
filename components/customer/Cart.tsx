@@ -1,22 +1,69 @@
 'use client'
 
-import { Plus, Minus, X, ShoppingBag } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Minus, X, ShoppingBag, Sparkles } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
 import { formatCurrency } from '@/lib/utils/helpers'
 import Image from 'next/image'
+import type { UpsellItem } from '@/app/api/upsell/route'
 
 interface CartProps {
   onCheckout: () => void
   isOpen?: boolean
   taxRate: number
+  restaurantId?: string
+  onUpsellAdd?: (menuItemId: string) => void
 }
 
-export default function Cart({ onCheckout, taxRate }: CartProps) {
-  const { items, updateQuantity, removeItem, subtotal } = useCartStore()
+export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }: CartProps) {
+  const { items, updateQuantity, removeItem, subtotal, addItem } = useCartStore()
+  const [upsellItems, setUpsellItems] = useState<UpsellItem[]>([])
+
   const sub = subtotal()
   const tax = Math.round(sub * taxRate * 100) / 100
   const total = sub + tax
   const taxPctLabel = parseFloat((taxRate * 100).toFixed(3))
+
+  // Stable key of cart item IDs — drives upsell refetch when cart changes
+  const cartItemIds = items.map(i => i.menu_item_id).filter(Boolean).join(',')
+
+  useEffect(() => {
+    if (!restaurantId || !cartItemIds) {
+      setUpsellItems([])
+      return
+    }
+    let active = true
+    fetch(`/api/upsell?restaurant_id=${restaurantId}&item_ids=${cartItemIds}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: UpsellItem[]) => { if (active) setUpsellItems(data) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [restaurantId, cartItemIds])
+
+  // Items already in cart shouldn't appear as suggestions (guard for race conditions)
+  const cartIdSet = new Set(items.map(i => i.menu_item_id))
+  const visibleUpsell = upsellItems.filter(u => !cartIdSet.has(u.id))
+
+  function handleAddUpsell(item: UpsellItem) {
+    if (item.has_required_options) {
+      // Has required options — open ItemModal so customer can configure
+      onUpsellAdd?.(item.id)
+    } else {
+      // Simple item — add directly and flag as upsell-sourced
+      addItem({
+        restaurantId: restaurantId!,
+        menu_item_id: item.id,
+        name: item.name,
+        price: item.price,
+        image_url: item.image_url,
+        quantity: 1,
+        notes: '',
+        selected_options: [],
+        added_from_upsell: true,
+      })
+      setUpsellItems(prev => prev.filter(u => u.id !== item.id))
+    }
+  }
 
   if (items.length === 0) {
     return (
@@ -32,6 +79,7 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
 
   return (
     <div className="flex flex-col">
+      {/* Cart items */}
       <div className="space-y-2 mb-4">
         {items.map(item => (
           <div key={item.id} className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
@@ -41,7 +89,14 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</p>
+                {item.added_from_upsell && (
+                  <span className="shrink-0 text-[9px] font-semibold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full">
+                    suggested
+                  </span>
+                )}
+              </div>
               {item.selected_options.map((opt, i) => (
                 <p key={i} className="text-xs text-gray-500 mt-0.5">
                   {opt.option_group_name}: {opt.option_name}
@@ -77,6 +132,45 @@ export default function Cart({ onCheckout, taxRate }: CartProps) {
           </div>
         ))}
       </div>
+
+      {/* Upsell suggestions */}
+      {visibleUpsell.length > 0 && (
+        <div className="mb-4 border border-amber-100 bg-amber-50 rounded-2xl p-3">
+          <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1 mb-2.5">
+            <Sparkles size={11} />
+            Customers also ordered
+          </p>
+          <div className="space-y-2">
+            {visibleUpsell.map(item => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2.5 bg-white rounded-xl border border-amber-100 p-2"
+              >
+                {item.image_url ? (
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                    <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 shrink-0 flex items-center justify-center">
+                    <ShoppingBag size={14} className="text-amber-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-800 truncate">{item.name}</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(item.price)}</p>
+                </div>
+                <button
+                  onClick={() => handleAddUpsell(item)}
+                  className="shrink-0 w-7 h-7 bg-brand-500 text-white rounded-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition"
+                  aria-label={`Add ${item.name}`}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Totals */}
       <div className="border-t border-gray-100 pt-3 space-y-1.5 mb-4">

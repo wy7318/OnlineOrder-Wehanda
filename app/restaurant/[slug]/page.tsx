@@ -59,6 +59,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
+  // Tracks whether the currently-open ItemModal was triggered by an upsell prompt
+  const upsellModalRef = useRef(false)
   const itemCount = cartStore.itemCount()
   const subtotal = cartStore.subtotal()
 
@@ -183,6 +185,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
   function addToCart(item: MenuItem, qty: number, options: CartOption[], notes: string) {
     if (!restaurant) return
+    const fromUpsell = upsellModalRef.current
+    upsellModalRef.current = false
     cartStore.addItem({
       restaurantId: restaurant.id,
       menu_item_id: item.id,
@@ -192,7 +196,16 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       quantity: qty,
       notes,
       selected_options: options,
+      added_from_upsell: fromUpsell,
     })
+  }
+
+  function handleUpsellAdd(menuItemId: string) {
+    const item = restaurant?.menu_items.find(i => i.id === menuItemId)
+    if (!item) return
+    upsellModalRef.current = true
+    setCartOpen(false)
+    setSelectedItem(item)
   }
 
   async function placeOrder() {
@@ -230,6 +243,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
           quantity: item.quantity,
           notes: item.notes || null,
           line_total: item.line_total,
+          added_from_upsell: item.added_from_upsell ?? false,
           options: item.selected_options.map(opt => ({
             option_group_name_snapshot: opt.option_group_name,
             option_name_snapshot: opt.option_name,
@@ -508,7 +522,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                 )}
               </div>
               <div className="p-5">
-                <Cart taxRate={taxRate} onCheckout={() => setCheckoutOpen(true)} />
+                <Cart taxRate={taxRate} onCheckout={() => setCheckoutOpen(true)} restaurantId={restaurant?.id} onUpsellAdd={handleUpsellAdd} />
               </div>
             </div>
           </div>
@@ -541,7 +555,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               <button onClick={() => setCartOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <Cart taxRate={taxRate} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true) }} />
+              <Cart taxRate={taxRate} onCheckout={() => { setCartOpen(false); setCheckoutOpen(true) }} restaurantId={restaurant?.id} onUpsellAdd={handleUpsellAdd} />
             </div>
           </div>
         </div>
