@@ -46,6 +46,13 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Claim any unlinked guest records matching this phone and sync the name
+  await admin.from('customers')
+    .update({ name: display_name.trim(), phone: phone.trim(), auth_user_id: user.id })
+    .eq('phone', phone.trim())
+    .is('auth_user_id', null)
+
   return NextResponse.json(data, { status: 201 })
 }
 
@@ -64,6 +71,14 @@ export async function PATCH(request: Request) {
   }
 
   const admin = createAdminClient()
+
+  // Capture old phone before applying update — needed to claim guest records
+  const { data: currentProfile } = await admin
+    .from('customer_profiles')
+    .select('phone')
+    .eq('id', user.id)
+    .maybeSingle()
+
   const { data, error } = await admin
     .from('customer_profiles')
     .update(update)
@@ -73,13 +88,23 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Propagate name/phone to all CRM customer records linked to this auth user
-  // (covers every restaurant they have ordered/reserved at)
   const crmUpdate: Record<string, string> = {}
   if (update.display_name) crmUpdate.name = update.display_name
   if (update.phone) crmUpdate.phone = update.phone
+
   if (Object.keys(crmUpdate).length > 0) {
+    // Update records already linked by auth_user_id (logged-in orders/reservations)
     await admin.from('customers').update(crmUpdate).eq('auth_user_id', user.id)
+
+    // Also claim unlinked guest records matching the old phone and sync them.
+    // Covers accounts created before auth_user_id was linked (guest → logged-in).
+    const oldPhone = currentProfile?.phone
+    if (oldPhone) {
+      await admin.from('customers')
+        .update({ ...crmUpdate, auth_user_id: user.id })
+        .eq('phone', oldPhone)
+        .is('auth_user_id', null)
+    }
   }
 
   return NextResponse.json(data)
