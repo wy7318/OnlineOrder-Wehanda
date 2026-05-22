@@ -87,7 +87,7 @@ export default function LandingPage() {
       <section className="py-20 px-6 bg-brand-500">
         <div className="max-w-2xl mx-auto text-center text-white">
           <h2 className="text-3xl font-bold mb-4">Ready to take orders online?</h2>
-          <p className="text-brand-100 mb-8 text-lg">Join restaurants already using Wehanda to grow their business.</p>
+          <p className="text-white/80 mb-8 text-lg">Join restaurants already using Wehanda to grow their business.</p>
           <Link
             href="/register"
             className="inline-flex items-center gap-2 bg-white text-brand-500 font-semibold px-8 py-4 rounded-xl text-lg hover:bg-brand-50 transition"

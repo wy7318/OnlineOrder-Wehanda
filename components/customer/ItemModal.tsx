@@ -153,7 +153,7 @@ export default function ItemModal({ item, onClose, onAddToCart }: ItemModalProps
                             {isSelected && <Check size={13} />}
                             {opt.name}
                             {opt.additional_price > 0 && (
-                              <span className={`text-xs font-bold ${isSelected ? 'text-brand-100' : 'text-green-600'}`}>
+                              <span className={`text-xs font-bold ${isSelected ? 'text-white/80' : 'text-green-600'}`}>
                                 +{formatCurrency(opt.additional_price)}
                               </span>
                             )}

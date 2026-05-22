@@ -45,8 +45,10 @@ function SetupContent() {
   const searchParams = useSearchParams()
   const isNew = searchParams.get('new') === '1'
   const {
-    orderSoundMode, orderRepeatCount, setOrderSoundMode, setOrderRepeatCount,
-    reservationSoundMode, reservationRepeatCount, setReservationSoundMode, setReservationRepeatCount,
+    orderSoundMode, orderRepeatCount, orderFlashEnabled,
+    setOrderSoundMode, setOrderRepeatCount, setOrderFlashEnabled,
+    reservationSoundMode, reservationRepeatCount, reservationFlashEnabled,
+    setReservationSoundMode, setReservationRepeatCount, setReservationFlashEnabled,
   } = useNotificationSettings()
   const [loading, setLoading] = useState(false)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
@@ -554,10 +556,28 @@ function SetupContent() {
                   </div>
                 </label>
               </div>
-              <button type="button" onClick={() => playBell()}
-                className="mt-3 flex items-center gap-1.5 text-xs text-brand-600 border border-brand-200 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition">
-                <Bell size={12} /> Test order sound
-              </button>
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                <button type="button" onClick={() => playBell()}
+                  className="flex items-center gap-1.5 text-xs text-brand-600 border border-brand-200 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition">
+                  <Bell size={12} /> Test order sound
+                </button>
+                {/* Screen flash toggle */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer"
+                      checked={orderFlashEnabled}
+                      onChange={e => setOrderFlashEnabled(e.target.checked)} />
+                    <div className="w-8 h-4 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
+                    <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
+                  </div>
+                  <span className="text-xs text-gray-600 font-medium">Screen flash</span>
+                </label>
+              </div>
+              {orderFlashEnabled && (
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  Screen blinks with each ring — follows the same count/mode as sound
+                </p>
+              )}
             </div>
 
             <div className="border-t border-gray-100 pt-5">
@@ -605,10 +625,28 @@ function SetupContent() {
                   </div>
                 </label>
               </div>
-              <button type="button" onClick={() => playBell()}
-                className="mt-3 flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
-                <Bell size={12} /> Test reservation sound
-              </button>
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                <button type="button" onClick={() => playBell()}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
+                  <Bell size={12} /> Test reservation sound
+                </button>
+                {/* Screen flash toggle */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only peer"
+                      checked={reservationFlashEnabled}
+                      onChange={e => setReservationFlashEnabled(e.target.checked)} />
+                    <div className="w-8 h-4 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
+                    <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
+                  </div>
+                  <span className="text-xs text-gray-600 font-medium">Screen flash</span>
+                </label>
+              </div>
+              {reservationFlashEnabled && (
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  Screen blinks with each ring — follows the same count/mode as sound
+                </p>
+              )}
             </div>
           </div>
 

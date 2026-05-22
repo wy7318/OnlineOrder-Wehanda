@@ -6,6 +6,7 @@ import { Bell, ShoppingBag, CalendarDays } from 'lucide-react'
 import { useNotificationStore } from '@/store/notifications'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
+import { triggerFlash } from '@/lib/utils/screenFlash'
 import { formatCurrency } from '@/lib/utils/helpers'
 import { formatTime12h } from '@/lib/utils/slots'
 import type { Order, Reservation } from '@/lib/types'
@@ -61,16 +62,18 @@ export default function NotificationBell() {
   const supabase = createClient()
   const { notifications, add, markAllRead, clear } = useNotificationStore()
   const {
-    orderSoundMode, orderRepeatCount,
-    reservationSoundMode, reservationRepeatCount,
+    orderSoundMode, orderRepeatCount, orderFlashEnabled,
+    reservationSoundMode, reservationRepeatCount, reservationFlashEnabled,
   } = useNotificationSettings()
 
   const [open, setOpen] = useState(false)
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [ringing, setRinging] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const orderCleanupRef = useRef<() => void>(() => {})
-  const reservationCleanupRef = useRef<() => void>(() => {})
+  const orderSoundCleanupRef = useRef<() => void>(() => {})
+  const orderFlashCleanupRef = useRef<() => void>(() => {})
+  const reservationSoundCleanupRef = useRef<() => void>(() => {})
+  const reservationFlashCleanupRef = useRef<() => void>(() => {})
 
   const unread = notifications.filter((n) => !n.read).length
 
@@ -100,7 +103,8 @@ export default function NotificationBell() {
             total: order.total_amount,
             createdAt: order.created_at,
           })
-          triggerSound(orderSoundMode, orderRepeatCount, orderCleanupRef)
+          triggerSound(orderSoundMode, orderRepeatCount, orderSoundCleanupRef)
+          if (orderFlashEnabled) triggerFlash(orderSoundMode, orderRepeatCount, orderFlashCleanupRef)
           setRinging(true)
           setTimeout(() => setRinging(false), 1000)
         }
@@ -109,9 +113,10 @@ export default function NotificationBell() {
 
     return () => {
       supabase.removeChannel(channel)
-      orderCleanupRef.current()
+      orderSoundCleanupRef.current()
+      orderFlashCleanupRef.current()
     }
-  }, [restaurantId, orderSoundMode, orderRepeatCount])
+  }, [restaurantId, orderSoundMode, orderRepeatCount, orderFlashEnabled])
 
   // ── Reservations subscription ────────────────────────────
   useEffect(() => {
@@ -133,7 +138,8 @@ export default function NotificationBell() {
             reservationTime: String(rsv.reservation_time).substring(0, 5),
             createdAt: rsv.created_at,
           })
-          triggerSound(reservationSoundMode, reservationRepeatCount, reservationCleanupRef)
+          triggerSound(reservationSoundMode, reservationRepeatCount, reservationSoundCleanupRef)
+          if (reservationFlashEnabled) triggerFlash(reservationSoundMode, reservationRepeatCount, reservationFlashCleanupRef)
           setRinging(true)
           setTimeout(() => setRinging(false), 1000)
         }
@@ -142,9 +148,10 @@ export default function NotificationBell() {
 
     return () => {
       supabase.removeChannel(channel)
-      reservationCleanupRef.current()
+      reservationSoundCleanupRef.current()
+      reservationFlashCleanupRef.current()
     }
-  }, [restaurantId, reservationSoundMode, reservationRepeatCount])
+  }, [restaurantId, reservationSoundMode, reservationRepeatCount, reservationFlashEnabled])
 
   // Close dropdown on outside click
   useEffect(() => {

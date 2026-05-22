@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       restaurant_id, order_type, customer_name, customer_phone, customer_email,
       order_notes, delivery_address, delivery_instructions,
       subtotal, fee_amount, items, customer_user_id,
+      marketing_opt_in,
     } = body
 
     if (!restaurant_id || !customer_name || !customer_phone || !items?.length) {
@@ -34,14 +35,18 @@ export async function POST(request: Request) {
     const tip = Math.max(0, fee_amount ?? 0)
     const total_amount = Math.round((subtotal + tax_amount + tip) * 100) / 100
 
-    // Upsert customer
+    // Upsert customer — capture marketing opt-in preference
     let customerId: string | null = null
     if (customer_email || customer_phone) {
+      const mktOptIn = marketing_opt_in !== false // default true unless explicitly false
+      const customerData: Record<string, unknown> = {
+        restaurant_id, name: customer_name, phone: customer_phone, email: customer_email || null,
+        marketing_opt_in: mktOptIn,
+      }
+      if (mktOptIn) customerData.marketing_opt_in_at = new Date().toISOString()
       const { data: customer } = await supabase
         .from('customers')
-        .upsert({
-          restaurant_id, name: customer_name, phone: customer_phone, email: customer_email || null,
-        }, { onConflict: 'restaurant_id,phone' })
+        .upsert(customerData, { onConflict: 'restaurant_id,phone' })
         .select('id')
         .single()
       customerId = customer?.id ?? null

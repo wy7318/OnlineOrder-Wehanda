@@ -38,6 +38,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [checkoutForm, setCheckoutForm] = useState({
     name: '', phone: '', email: '', notes: '', delivery_address: '', delivery_instructions: '',
   })
+  const [marketingOptIn, setMarketingOptIn] = useState(true)
   const [wantsUtensils, setWantsUtensils] = useState(false)
   const [tipPercent, setTipPercent] = useState<number>(0)  // 0 = no tip, -1 = custom, 15/18/20/25 = preset
   const [customTip, setCustomTip] = useState('')
@@ -66,6 +67,17 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
   useEffect(() => { loadRestaurant() }, [slug])
 
+  // Read marketing opt-in preference stored by the auth modal before OTP redirect
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(`wehanda_mkt_optin_${slug}`)
+      if (stored !== null) {
+        setMarketingOptIn(stored === 'true')
+        sessionStorage.removeItem(`wehanda_mkt_optin_${slug}`)
+      }
+    } catch {}
+  }, [slug])
+
   // Auth state listener — runs once on mount
   useEffect(() => {
     const supabase = createClient()
@@ -80,6 +92,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       } else {
         setCustomerProfile(null)
         setCheckoutForm({ name: '', phone: '', email: '', notes: '', delivery_address: '', delivery_instructions: '' })
+        setMarketingOptIn(true)
       }
     })
     return () => subscription.unsubscribe()
@@ -201,6 +214,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         delivery_instructions: orderType === 'delivery' ? checkoutForm.delivery_instructions : null,
         subtotal,
         fee_amount: tipAmount,   // tip stored in fee_amount
+        marketing_opt_in: marketingOptIn,
         customer_user_id: customerSession?.user?.id ?? null,
         items: cartStore.items.map(item => ({
           menu_item_id: item.menu_item_id,
@@ -654,7 +668,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                         className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tipPercent === pct ? 'bg-brand-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                         {pct === 0 ? 'No tip' : `${pct}%`}
                         {pct > 0 && tipPercent === pct && subtotal > 0 && (
-                          <span className="ml-1 text-brand-200 text-xs">{formatCurrency(Math.round(subtotal * pct) / 100)}</span>
+                          <span className="ml-1 text-white/70 text-xs">{formatCurrency(Math.round(subtotal * pct) / 100)}</span>
                         )}
                       </button>
                     ))}
@@ -671,6 +685,30 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                     </div>
                   )}
                 </div>
+
+                {/* Marketing opt-in */}
+                <label className="flex items-start gap-3 cursor-pointer select-none group">
+                  <div className="relative mt-0.5 shrink-0">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={marketingOptIn}
+                      onChange={e => setMarketingOptIn(e.target.checked)}
+                    />
+                    <div className="w-5 h-5 rounded-md border-2 border-gray-300 peer-checked:border-brand-500 peer-checked:bg-brand-500 transition-colors flex items-center justify-center">
+                      {marketingOptIn && (
+                        <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    I agree to receive exclusive offers, promotions, and updates from{' '}
+                    <span className="font-semibold text-gray-700">{restaurant?.name}</span>.
+                    {' '}You can opt out at any time by contacting the restaurant.
+                  </p>
+                </label>
 
                 {/* Payment note */}
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5 flex items-center gap-3">
@@ -755,7 +793,7 @@ function MenuItemCard({ item, onClick }: { item: MenuItem & { tags: Tag[]; optio
             <Image src={item.image_url} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-brand-50 to-amber-50 flex items-center justify-center">
-              <Utensils size={22} className="text-brand-200" />
+              <Utensils size={22} className="text-brand-400" />
             </div>
           )}
           <div className="absolute bottom-1.5 right-1.5">
