@@ -12,10 +12,12 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed, Star } from 'lucide-react'
 import Image from 'next/image'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
+import LoyaltySetupWizard from '@/components/dashboard/LoyaltySetupWizard'
+import type { LoyaltyProgram } from '@/lib/types'
 
 const CUISINE_OPTIONS = [
   // World cuisines
@@ -68,6 +70,8 @@ function SetupContent() {
   } = useNotificationSettings()
   const [loading, setLoading] = useState(false)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [loyaltyProgram, setLoyaltyProgram] = useState<LoyaltyProgram | null>(null)
+  const [loyaltyWizardOpen, setLoyaltyWizardOpen] = useState(false)
   const [cuisineTypes, setCuisineTypes] = useState<string[]>([])
   const [hours, setHours] = useState(defaultHours())
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -122,6 +126,10 @@ function SetupContent() {
           .eq('restaurant_id', r.id)
           .order('day_of_week')
         if (h && h.length > 0) setHours(h)
+
+        // Load loyalty program
+        const lpRes = await fetch(`/api/loyalty/program?restaurant_id=${r.id}`)
+        if (lpRes.ok) setLoyaltyProgram(await lpRes.json())
       }
     }
     load()
@@ -746,8 +754,51 @@ function SetupContent() {
               <p className="text-xs text-brand-600 break-all">/restaurant/{form.slug}</p>
             </div>
           )}
+
+          {/* Loyalty Program card */}
+          {restaurant && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Star size={17} className="text-amber-500" /> Loyalty Program
+                </h3>
+                {loyaltyProgram?.is_enabled && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
+                )}
+              </div>
+              {loyaltyProgram?.is_enabled ? (
+                <div className="space-y-2 mb-4">
+                  <p className="text-sm font-bold text-gray-800">{loyaltyProgram.program_name}</p>
+                  <p className="text-xs text-gray-500">{loyaltyProgram.points_per_dollar} pt / $1 earned · {loyaltyProgram.points_to_redeem} pts = $1 off</p>
+                  {loyaltyProgram.welcome_bonus_points > 0 && (
+                    <p className="text-xs text-amber-600">+{loyaltyProgram.welcome_bonus_points} welcome bonus</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mb-4">
+                  Reward repeat customers with a points-based loyalty program.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setLoyaltyWizardOpen(true)}
+                className="w-full py-2 rounded-xl border-2 border-brand-200 text-brand-600 text-sm font-bold hover:bg-brand-50 transition"
+              >
+                {loyaltyProgram ? 'Edit Program' : 'Set Up Rewards'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {loyaltyWizardOpen && restaurant && (
+        <LoyaltySetupWizard
+          restaurantId={restaurant.id}
+          existing={loyaltyProgram}
+          onSaved={saved => { setLoyaltyProgram(saved); setLoyaltyWizardOpen(false) }}
+          onClose={() => setLoyaltyWizardOpen(false)}
+        />
+      )}
     </>
   )
 }

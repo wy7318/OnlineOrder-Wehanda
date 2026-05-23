@@ -12,6 +12,8 @@ export async function POST(request: Request) {
       order_notes, delivery_address, delivery_instructions,
       subtotal, fee_amount, items, customer_user_id,
       marketing_opt_in,
+      loyalty_points_redeemed = 0,
+      loyalty_discount_amount = 0,
     } = body
 
     if (!restaurant_id || !customer_name || !customer_phone || !items?.length) {
@@ -35,7 +37,63 @@ export async function POST(request: Request) {
     const taxRate = restaurant.tax_rate ?? 0
     const tax_amount = Math.round(subtotal * (taxRate / 100) * 100) / 100
     const tip = Math.max(0, fee_amount ?? 0)
-    const total_amount = Math.round((subtotal + tax_amount + tip) * 100) / 100
+
+    // Validate loyalty redemption if present
+    let loyaltyPointsRedeemed = 0
+    let loyaltyDiscountAmount = 0
+    if (loyalty_points_redeemed > 0 && customer_user_id) {
+      const { data: program } = await supabase
+        .from('loyalty_programs')
+        .select('is_enabled, points_to_redeem, minimum_points_to_redeem')
+        .eq('restaurant_id', restaurant_id)
+        .eq('is_enabled', true)
+        .maybeSingle()
+
+      if (program) {
+        let cust = await supabase
+          .from('customers')
+          .select('id, loyalty_points_balance')
+          .eq('restaurant_id', restaurant_id)
+          .eq('auth_user_id', customer_user_id)
+          .maybeSingle()
+          .then(r => r.data)
+
+        if (!cust) {
+          const { data: latestOrder } = await supabase
+            .from('orders')
+            .select('customer_id')
+            .eq('restaurant_id', restaurant_id)
+            .eq('customer_user_id', customer_user_id)
+            .not('customer_id', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (latestOrder?.customer_id) {
+            const { data: c } = await supabase
+              .from('customers')
+              .update({ auth_user_id: customer_user_id })
+              .eq('id', latestOrder.customer_id)
+              .select('id, loyalty_points_balance')
+              .single()
+            cust = c ?? null
+          }
+        }
+
+        const actualPoints = Math.min(loyalty_points_redeemed, cust?.loyalty_points_balance ?? 0)
+        if (cust && actualPoints >= program.minimum_points_to_redeem) {
+          loyaltyPointsRedeemed = actualPoints
+          loyaltyDiscountAmount = Math.floor(actualPoints / program.points_to_redeem)
+          // Redeem immediately — deduct balance and create transaction
+          await supabase.from('customers')
+            .update({ loyalty_points_balance: cust.loyalty_points_balance - loyaltyPointsRedeemed })
+            .eq('id', cust.id)
+          // Transaction inserted after order is created (need order.id)
+        }
+      }
+    }
+
+    const total_amount = Math.max(0, Math.round((subtotal + tax_amount + tip - loyaltyDiscountAmount) * 100) / 100)
 
     // Resolve CRM customer record
     // Logged-in: auth_user_id is the stable identity — survives phone changes.
@@ -119,6 +177,8 @@ export async function POST(request: Request) {
         customer_name, customer_phone, customer_email: customer_email || '',
         order_notes, delivery_address, delivery_instructions,
         subtotal, tax_amount, fee_amount: tip, total_amount,
+        loyalty_points_redeemed: loyaltyPointsRedeemed,
+        loyalty_discount_amount: loyaltyDiscountAmount,
       })
       .select()
       .single()
@@ -126,6 +186,18 @@ export async function POST(request: Request) {
     if (orderErr || !order) {
       console.error('Order creation error:', orderErr)
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
+    }
+
+    // Record loyalty redemption transaction
+    if (loyaltyPointsRedeemed > 0 && customerId) {
+      supabase.from('loyalty_transactions').insert({
+        restaurant_id,
+        customer_id: customerId,
+        order_id: order.id,
+        points_delta: -loyaltyPointsRedeemed,
+        type: 'order_redeem',
+        note: `Redeemed ${loyaltyPointsRedeemed} pts for $${loyaltyDiscountAmount} off`,
+      }).then()
     }
 
     // Create order items and options

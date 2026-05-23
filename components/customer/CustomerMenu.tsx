@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { User, Package, CalendarDays, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { User, Package, CalendarDays, Settings, LogOut, ChevronDown, Star } from 'lucide-react'
 import type { CustomerProfile } from '@/lib/types'
 
 interface Props {
@@ -10,9 +10,11 @@ interface Props {
   onMyReservations: () => void
   onSettings: () => void
   onSignOut: () => void
+  onMyRewards?: () => void
+  loyaltyEnabled?: boolean
 }
 
-export default function CustomerMenu({ profile, onMyOrders, onMyReservations, onSettings, onSignOut }: Props) {
+export default function CustomerMenu({ profile, onMyOrders, onMyReservations, onSettings, onSignOut, onMyRewards, loyaltyEnabled }: Props) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -45,6 +47,14 @@ export default function CustomerMenu({ profile, onMyOrders, onMyReservations, on
             <p className="text-sm font-semibold text-gray-900 truncate">{profile?.display_name ?? 'Customer'}</p>
           </div>
           <div className="py-1">
+            {loyaltyEnabled && onMyRewards && (
+              <button
+                onClick={() => { setOpen(false); onMyRewards() }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-brand-600 hover:bg-brand-50 transition text-left font-semibold"
+              >
+                <Star size={15} className="text-brand-500" /> My Rewards
+              </button>
+            )}
             <button
               onClick={() => { setOpen(false); onMyOrders() }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition text-left"

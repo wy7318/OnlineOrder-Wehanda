@@ -16,7 +16,9 @@ import OrderHistory from '@/components/customer/OrderHistory'
 import CustomerMenu from '@/components/customer/CustomerMenu'
 import ReservationHistory from '@/components/customer/ReservationHistory'
 import CustomerSettingsPanel from '@/components/customer/CustomerSettingsPanel'
-import type { Category, CustomerProfile, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
+import LoyaltyWidget from '@/components/customer/LoyaltyWidget'
+import type { Category, CustomerProfile, LoyaltyProgram, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
+import { Star } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { use } from 'react'
 
@@ -57,6 +59,10 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false)
   const [reservationHistoryOpen, setReservationHistoryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [rewardsPanelOpen, setRewardsPanelOpen] = useState(false)
+  const [loyaltyProgram, setLoyaltyProgram] = useState<LoyaltyProgram | null>(null)
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0)
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0)
 
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   // Tracks whether the currently-open ItemModal was triggered by an upsell prompt
@@ -70,9 +76,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const tipAmount = tipPercent === -1
     ? Math.max(0, Math.round((parseFloat(customTip) || 0) * 100) / 100)
     : Math.round(subtotal * tipPercent) / 100
-  const totalAmount = Math.round((subtotal + taxAmount + tipAmount) * 100) / 100
+  const loyaltyDiscountAmount = loyaltyPointsToRedeem > 0 && loyaltyProgram
+    ? Math.floor(loyaltyPointsToRedeem / loyaltyProgram.points_to_redeem)
+    : 0
+  const totalAmount = Math.max(0, Math.round((subtotal + taxAmount + tipAmount - loyaltyDiscountAmount) * 100) / 100)
 
   useEffect(() => { loadRestaurant() }, [slug])
+
+  // Fetch loyalty balance whenever session + restaurant both ready
+  useEffect(() => {
+    if (customerSession && restaurant?.id && loyaltyProgram?.is_enabled) {
+      fetchLoyaltyBalance(restaurant.id)
+    }
+  }, [customerSession?.user?.id, restaurant?.id, loyaltyProgram?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Read marketing opt-in preference stored by the auth modal before OTP redirect
   useEffect(() => {
@@ -98,6 +114,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         fetchCustomerProfile(session)
       } else {
         setCustomerProfile(null)
+        setLoyaltyBalance(0)
+        setLoyaltyPointsToRedeem(0)
         setCheckoutForm({ name: '', phone: '', email: '', notes: '', delivery_address: '', delivery_instructions: '' })
         setMarketingOptIn(true)
       }
@@ -120,6 +138,16 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     } else {
       setProfileModalOpen(true)
     }
+  }
+
+  async function fetchLoyaltyBalance(restaurantId: string) {
+    try {
+      const res = await fetch(`/api/loyalty/balance?restaurant_id=${restaurantId}`)
+      if (!res.ok) return
+      const d = await res.json()
+      setLoyaltyBalance(d.balance ?? 0)
+      if (d.program?.is_enabled) setLoyaltyProgram(d.program)
+    } catch {}
   }
 
   async function handleSignOut() {
@@ -163,6 +191,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     setRestaurant({ ...r, restaurant_hours: hours ?? [], categories: enrichedCats, menu_items: enrichedItems })
     setIsOpen(isRestaurantOpen(hours ?? [], r.timezone))
     if (enrichedCats.length > 0) setActiveCategory(enrichedCats[0].id)
+
+    // Fetch loyalty program (public)
+    fetch(`/api/loyalty/program?restaurant_id=${r.id}`)
+      .then(res => res.json())
+      .then(lp => { if (lp?.is_enabled) setLoyaltyProgram(lp) })
+      .catch(() => {})
 
     if (r.pickup_enabled) setOrderType('pickup')
     else if (r.dine_in_enabled) setOrderType('dine_in')
@@ -236,6 +270,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         fee_amount: tipAmount,   // tip stored in fee_amount
         marketing_opt_in: marketingOptIn,
         customer_user_id: customerSession?.user?.id ?? null,
+        loyalty_points_redeemed: loyaltyPointsToRedeem,
+        loyalty_discount_amount: loyaltyDiscountAmount,
         items: cartStore.items.map(item => ({
           menu_item_id: item.menu_item_id,
           item_name_snapshot: item.name,
@@ -262,6 +298,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       setTipPercent(0)
       setCustomTip('')
       setWantsUtensils(false)
+      // Refresh loyalty balance after redemption
+      if (loyaltyPointsToRedeem > 0 && restaurant?.id) {
+        setLoyaltyBalance(b => b - loyaltyPointsToRedeem)
+        setLoyaltyPointsToRedeem(0)
+      }
     }
     setCheckoutLoading(false)
   }
@@ -327,6 +368,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               onMyReservations={() => setReservationHistoryOpen(true)}
               onSettings={() => setSettingsOpen(true)}
               onSignOut={handleSignOut}
+              loyaltyEnabled={!!loyaltyProgram?.is_enabled}
+              onMyRewards={() => setRewardsPanelOpen(true)}
             />
           ) : (
             <button
@@ -597,6 +640,14 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         <ReservationHistory restaurantId={restaurant.id} onClose={() => setReservationHistoryOpen(false)} />
       )}
 
+      {/* ── Loyalty Widget ── */}
+      {rewardsPanelOpen && restaurant && (
+        <LoyaltyWidget
+          restaurantId={restaurant.id}
+          onClose={() => setRewardsPanelOpen(false)}
+        />
+      )}
+
       {/* ── Customer Settings ── */}
       {settingsOpen && customerSession && customerProfile && (
         <CustomerSettingsPanel
@@ -700,6 +751,48 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   </div>
                 </label>
 
+                {/* Loyalty Redemption */}
+                {loyaltyProgram?.is_enabled && customerSession && loyaltyBalance >= loyaltyProgram.minimum_points_to_redeem && (
+                  <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Star size={16} className="text-amber-500 shrink-0" />
+                      <p className="text-sm font-bold text-amber-800">
+                        Use Rewards Points
+                        <span className="ml-2 text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                          {loyaltyBalance} pts available
+                        </span>
+                      </p>
+                    </div>
+                    {loyaltyPointsToRedeem === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Snap to the largest multiple of points_to_redeem within balance
+                          const maxPts = Math.floor(loyaltyBalance / loyaltyProgram.points_to_redeem) * loyaltyProgram.points_to_redeem
+                          setLoyaltyPointsToRedeem(maxPts)
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition"
+                      >
+                        Apply {loyaltyBalance} pts → ${Math.floor(loyaltyBalance / loyaltyProgram.points_to_redeem)} off
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-green-700">
+                          − ${loyaltyDiscountAmount} discount applied!
+                          <span className="ml-1.5 text-xs font-medium text-green-600">({loyaltyPointsToRedeem} pts)</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setLoyaltyPointsToRedeem(0)}
+                          className="text-xs text-gray-400 hover:text-red-500 transition font-medium px-2 py-1 rounded-lg hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Tip */}
                 <div>
                   <p className="text-sm font-bold text-gray-700 mb-3">Add a Tip</p>
@@ -770,6 +863,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                     </div>
                   )}
                   {tipAmount > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tip</span><span>{formatCurrency(tipAmount)}</span></div>}
+                  {loyaltyDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 font-semibold">
+                      <span className="flex items-center gap-1"><Star size={12} /> Rewards discount</span>
+                      <span>− {formatCurrency(loyaltyDiscountAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-extrabold text-gray-900 text-base pt-2 border-t border-gray-200 mt-1">
                     <span>Total</span><span>{formatCurrency(totalAmount)}</span>
                   </div>

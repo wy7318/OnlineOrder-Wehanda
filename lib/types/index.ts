@@ -313,6 +313,38 @@ export interface CustomerProfile {
   updated_at: string
 }
 
+// ── Loyalty ───────────────────────────────────────────────────
+export interface LoyaltyProgram {
+  id: string
+  restaurant_id: string
+  is_enabled: boolean
+  program_name: string
+  points_per_dollar: number
+  points_to_redeem: number        // X points = $1 off
+  minimum_points_to_redeem: number
+  welcome_bonus_points: number
+  birthday_bonus_points: number
+  points_expiry_days: number | null
+  created_at: string
+  updated_at: string
+}
+
+export type LoyaltyTransactionType =
+  | 'order_earn' | 'order_redeem' | 'order_refund'
+  | 'welcome_bonus' | 'birthday_bonus'
+  | 'manual_adjust' | 'expiry'
+
+export interface LoyaltyTransaction {
+  id: string
+  restaurant_id: string
+  customer_id: string
+  order_id: string | null
+  points_delta: number
+  type: LoyaltyTransactionType
+  note: string | null
+  created_at: string
+}
+
 // ── Order ─────────────────────────────────────────────────────
 export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled'
 export type OrderType = 'pickup' | 'dine_in' | 'delivery'
@@ -329,6 +361,8 @@ export interface Order {
   tax_amount: number
   fee_amount: number
   total_amount: number
+  loyalty_points_redeemed: number
+  loyalty_discount_amount: number
   customer_name: string
   customer_phone: string
   customer_email: string

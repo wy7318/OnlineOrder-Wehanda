@@ -82,9 +82,17 @@ export default function OrderHistory({ restaurantId, onClose }: Props) {
                   </div>
                 )}
 
-                <div className="flex justify-between items-center pt-2 border-t border-gray-50">
-                  <span className="text-xs text-gray-400 capitalize">{order.order_type.replace('_', ' ')}</span>
-                  <span className="font-bold text-gray-900 text-sm">{formatCurrency(order.total_amount)}</span>
+                <div className="pt-2 border-t border-gray-50 space-y-1">
+                  {order.loyalty_discount_amount > 0 && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-amber-600 font-medium">Rewards discount</span>
+                      <span className="text-amber-600 font-medium">-{formatCurrency(order.loyalty_discount_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-400 capitalize">{order.order_type.replace('_', ' ')}</span>
+                    <span className="font-bold text-gray-900 text-sm">{formatCurrency(order.total_amount)}</span>
+                  </div>
                 </div>
               </div>
             ))

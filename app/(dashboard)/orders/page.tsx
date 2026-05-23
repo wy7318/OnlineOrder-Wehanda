@@ -143,8 +143,11 @@ export default function OrdersPage() {
   async function advanceStatus(e: React.MouseEvent, order: OrderRow, next: OrderStatus) {
     e.stopPropagation()
     setUpdatingId(order.id)
-    await supabase.from('orders').update({ status: next, updated_at: new Date().toISOString() }).eq('id', order.id)
-    // Optimistic update
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next }),
+    })
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: next } : o))
     if (modalOrder?.id === order.id) setModalOrder(prev => prev ? { ...prev, status: next } : prev)
     setUpdatingId(null)
@@ -154,7 +157,11 @@ export default function OrdersPage() {
     e.stopPropagation()
     if (!confirm(`Cancel order ${order.order_number}?`)) return
     setUpdatingId(order.id)
-    await supabase.from('orders').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', order.id)
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    })
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o))
     if (modalOrder?.id === order.id) setModalOrder(prev => prev ? { ...prev, status: 'cancelled' } : prev)
     setUpdatingId(null)
@@ -521,6 +528,12 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             <div className="flex justify-between text-sm text-gray-500"><span>Tax</span><span>{formatCurrency(order.tax_amount)}</span></div>
             {order.fee_amount > 0 && (
               <div className="flex justify-between text-sm text-gray-500"><span>Tip</span><span>{formatCurrency(order.fee_amount)}</span></div>
+            )}
+            {(order.loyalty_discount_amount ?? 0) > 0 && (
+              <div className="flex justify-between text-sm text-amber-600 font-medium">
+                <span>Rewards discount</span>
+                <span>-{formatCurrency(order.loyalty_discount_amount)}</span>
+              </div>
             )}
             <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100">
               <span>Total</span>
