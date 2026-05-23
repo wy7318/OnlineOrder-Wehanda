@@ -83,6 +83,28 @@ export interface MonthlyReportData {
   bottomItems: Array<{ name: string; qty: number; revenue: number }>
   topRevenueItems: Array<{ name: string; revenue: number }>
 
+  upsell: {
+    revenue: number
+    orderCount: number
+    totalOrders: number
+    acceptanceRatePct: number
+    aovWithUpsell: number
+    aovWithoutUpsell: number
+    aovLift: number
+    topItems: Array<{ name: string; count: number; revenue: number }>
+  } | null
+
+  loyalty: {
+    activeMembers: number
+    totalDiscountGiven: number
+    redemptionOrderCount: number
+    pointsEarned: number
+    pointsNetRedeemed: number
+    memberAov: number
+    guestAov: number
+    memberAovLiftPct: number
+  } | null
+
   reservations: {
     current: number
     prev: number
@@ -147,9 +169,10 @@ export async function buildMonthlyReport(
     { data: currReservations },
     { data: prevReservations },
     { data: allPrevCustomers },
+    { data: loyaltyTxns },
   ] = await Promise.all([
     supabase.from('orders')
-      .select('id, status, total_amount, subtotal, fee_amount, created_at, customer_id')
+      .select('id, status, total_amount, subtotal, fee_amount, created_at, customer_id, customer_user_id, loyalty_discount_amount')
       .eq('restaurant_id', restaurantId)
       .gte('created_at', ps).lt('created_at', pe)
       .limit(3000),
@@ -175,6 +198,10 @@ export async function buildMonthlyReport(
       .lt('created_at', ps)
       .not('customer_id', 'is', null)
       .limit(10000),
+    supabase.from('loyalty_transactions')
+      .select('customer_id, points_delta, type')
+      .eq('restaurant_id', restaurantId)
+      .gte('created_at', ps).lt('created_at', pe),
   ])
 
   const curr = currOrders ?? []
@@ -223,21 +250,30 @@ export async function buildMonthlyReport(
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
-  // ── Menu items ────────────────────────────────────────────────
+  // ── Menu items + Upsell (single fetch shared by both) ─────────
   const nonCancelledIds = nonCancelled.map(o => o.id)
-  const itemMap: Record<string, { qty: number; revenue: number }> = {}
+  let fetchedItems: Array<{
+    item_name_snapshot: string
+    quantity: number
+    line_total: number
+    added_from_upsell: boolean
+    order_id: string
+  }> = []
   if (nonCancelledIds.length > 0) {
-    const { data: orderItems } = await supabase
+    const { data } = await supabase
       .from('order_items')
-      .select('item_name_snapshot, quantity, line_total')
+      .select('item_name_snapshot, quantity, line_total, added_from_upsell, order_id')
       .in('order_id', nonCancelledIds)
       .limit(10000)
-    for (const item of orderItems ?? []) {
-      const k = item.item_name_snapshot
-      if (!itemMap[k]) itemMap[k] = { qty: 0, revenue: 0 }
-      itemMap[k].qty += item.quantity ?? 0
-      itemMap[k].revenue += item.line_total ?? 0
-    }
+    fetchedItems = data ?? []
+  }
+
+  const itemMap: Record<string, { qty: number; revenue: number }> = {}
+  for (const item of fetchedItems) {
+    const k = item.item_name_snapshot
+    if (!itemMap[k]) itemMap[k] = { qty: 0, revenue: 0 }
+    itemMap[k].qty += item.quantity ?? 0
+    itemMap[k].revenue += item.line_total ?? 0
   }
   const allItems = Object.entries(itemMap).map(([name, v]) => ({
     name, qty: v.qty, revenue: round2(v.revenue),
@@ -245,6 +281,90 @@ export async function buildMonthlyReport(
   const topItems = [...allItems].sort((a, b) => b.qty - a.qty).slice(0, 5)
   const bottomItems = [...allItems].sort((a, b) => a.qty - b.qty).slice(0, 5)
   const topRevenueItems = [...allItems].sort((a, b) => b.revenue - a.revenue).slice(0, 5)
+
+  // ── Upsell ────────────────────────────────────────────────────
+  const upsellItems = fetchedItems.filter(i => i.added_from_upsell)
+  const upsellRevenue = round2(upsellItems.reduce((s, i) => s + Number(i.line_total), 0))
+  const ordersWithUpsellSet = new Set(upsellItems.map(i => i.order_id))
+  const upsellOrderCount = ordersWithUpsellSet.size
+  const completedCount = nonCancelled.length
+
+  const ordersWithUpsell = nonCancelled.filter(o => ordersWithUpsellSet.has(o.id))
+  const ordersWithoutUpsell = nonCancelled.filter(o => !ordersWithUpsellSet.has(o.id))
+  const upsellAov = ordersWithUpsell.length > 0
+    ? ordersWithUpsell.reduce((s, o) => s + Number(o.total_amount), 0) / ordersWithUpsell.length
+    : 0
+  const nonUpsellAov = ordersWithoutUpsell.length > 0
+    ? ordersWithoutUpsell.reduce((s, o) => s + Number(o.total_amount), 0) / ordersWithoutUpsell.length
+    : 0
+
+  const upsellItemMap: Record<string, { count: number; revenue: number }> = {}
+  upsellItems.forEach(i => {
+    const k = i.item_name_snapshot
+    if (!upsellItemMap[k]) upsellItemMap[k] = { count: 0, revenue: 0 }
+    upsellItemMap[k].count += 1
+    upsellItemMap[k].revenue += Number(i.line_total)
+  })
+  const topUpsellItems = Object.entries(upsellItemMap)
+    .sort(([, a], [, b]) => b.revenue - a.revenue)
+    .slice(0, 3)
+    .map(([name, s]) => ({ name, count: s.count, revenue: round2(s.revenue) }))
+
+  const upsellData: MonthlyReportData['upsell'] = completedCount > 0 ? {
+    revenue: upsellRevenue,
+    orderCount: upsellOrderCount,
+    totalOrders: completedCount,
+    acceptanceRatePct: Math.round((upsellOrderCount / completedCount) * 100),
+    aovWithUpsell: round2(upsellAov),
+    aovWithoutUpsell: round2(nonUpsellAov),
+    aovLift: round2(upsellAov - nonUpsellAov),
+    topItems: topUpsellItems,
+  } : null
+
+  // ── Loyalty ────────────────────────────────────────────────────
+  const txns = loyaltyTxns ?? []
+  const EARN_TYPES = new Set(['order_earn', 'welcome_bonus', 'birthday_bonus', 'manual_adjust'])
+  const pointsEarned = txns
+    .filter(t => EARN_TYPES.has(t.type) && t.points_delta > 0)
+    .reduce((s, t) => s + t.points_delta, 0)
+  const pointsGrossRedeemed = Math.abs(
+    txns.filter(t => t.type === 'order_redeem').reduce((s, t) => s + t.points_delta, 0)
+  )
+  const pointsRefunded = txns
+    .filter(t => t.type === 'order_refund')
+    .reduce((s, t) => s + t.points_delta, 0)
+  const pointsNetRedeemed = Math.max(0, pointsGrossRedeemed - pointsRefunded)
+  const loyaltyActiveMembers = new Set(txns.map(t => t.customer_id)).size
+
+  const totalDiscountGiven = round2(
+    nonCancelled.reduce((s, o) => s + Number((o as { loyalty_discount_amount?: number }).loyalty_discount_amount ?? 0), 0)
+  )
+  const redemptionOrderCount = nonCancelled.filter(
+    o => Number((o as { loyalty_discount_amount?: number }).loyalty_discount_amount ?? 0) > 0
+  ).length
+
+  const memberOrders = nonCancelled.filter(o => (o as { customer_user_id?: string }).customer_user_id)
+  const guestOrders = nonCancelled.filter(o => !(o as { customer_user_id?: string }).customer_user_id)
+  const memberAov = memberOrders.length > 0
+    ? memberOrders.reduce((s, o) => s + Number(o.total_amount), 0) / memberOrders.length
+    : 0
+  const guestAov = guestOrders.length > 0
+    ? guestOrders.reduce((s, o) => s + Number(o.total_amount), 0) / guestOrders.length
+    : 0
+  const memberAovLiftPct = guestAov > 0
+    ? Math.round(((memberAov - guestAov) / guestAov) * 100)
+    : 0
+
+  const loyaltyData: MonthlyReportData['loyalty'] = loyaltyActiveMembers > 0 || totalDiscountGiven > 0 ? {
+    activeMembers: loyaltyActiveMembers,
+    totalDiscountGiven,
+    redemptionOrderCount,
+    pointsEarned,
+    pointsNetRedeemed,
+    memberAov: round2(memberAov),
+    guestAov: round2(guestAov),
+    memberAovLiftPct,
+  } : null
 
   // ── Reservations ──────────────────────────────────────────────
   const currRes = currReservations ?? []
@@ -311,6 +431,16 @@ export async function buildMonthlyReport(
     insights.push(`Only ${repeatRatePct}% of customers came back this month. A simple loyalty punch card or a follow-up message after their first order could meaningfully improve retention.`)
   }
 
+  const fmtCurrency = (n: number) => `$${n.toFixed(2)}`
+
+  if (upsellData && upsellData.aovLift > 1 && upsellData.acceptanceRatePct < 30) {
+    insights.push(`Upsells boosted avg. order value by ${fmtCurrency(upsellData.aovLift)} per order, but only ${upsellData.acceptanceRatePct}% of orders included one. Review which items are being suggested and consider enabling upsells on your top sellers.`)
+  }
+
+  if (loyaltyData && loyaltyData.memberAovLiftPct > 10) {
+    insights.push(`Loyalty members spent ${loyaltyData.memberAovLiftPct}% more per order than guests (${fmtCurrency(loyaltyData.memberAov)} vs ${fmtCurrency(loyaltyData.guestAov)}). Growing your member base could meaningfully lift overall revenue.`)
+  }
+
   if (prevAov > 0) {
     const aovDiff = pctChange(currAov, prevAov)
     if (aovDiff !== null && aovDiff <= -10) {
@@ -352,6 +482,8 @@ export async function buildMonthlyReport(
     topItems,
     bottomItems,
     topRevenueItems,
+    upsell: upsellData,
+    loyalty: loyaltyData,
     reservations,
     customers: {
       uniqueCount: uniqueCustSet.size,

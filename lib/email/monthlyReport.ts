@@ -1,6 +1,7 @@
 import type { MonthlyReportData } from '@/lib/reports/monthlyData'
 
 const fmt = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtPts = (n: number) => n.toLocaleString('en-US')
 const fmtInt = (n: number) => n.toLocaleString('en-US')
 
 function changeBadge(pct: number | null, invert = false): string {
@@ -20,6 +21,96 @@ function sectionHeader(title: string, emoji: string): string {
       </div>
     </td>
   </tr>`
+}
+
+function buildRevenueImpactSection(d: MonthlyReportData): string {
+  const hasUpsell = d.upsell && d.upsell.totalOrders > 0
+  const hasLoyalty = d.loyalty && (d.loyalty.activeMembers > 0 || d.loyalty.totalDiscountGiven > 0)
+  if (!hasUpsell && !hasLoyalty) return ''
+
+  const u = d.upsell
+  const l = d.loyalty
+
+  const upsellPanel = hasUpsell && u ? `
+    <td style="width:50%;padding:16px;vertical-align:top;border-right:1px solid #e2e8f0;">
+      <p style="margin:0 0 10px;font-size:11px;font-weight:800;color:#ea580c;text-transform:uppercase;letter-spacing:0.08em;">🔼 Upsell</p>
+      <p style="margin:0;font-size:22px;font-weight:800;color:#111827;">${fmt(u.revenue)}</p>
+      <p style="margin:3px 0 10px;font-size:12px;color:#6b7280;">extra revenue this month</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">Acceptance rate</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${u.acceptanceRatePct}% of orders</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">AOV with upsell</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${fmt(u.aovWithUpsell)}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">AOV without</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${fmt(u.aovWithoutUpsell)}</td>
+        </tr>
+        ${u.aovLift > 0.5 ? `
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#16a34a;font-weight:700;">AOV lift</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:800;color:#16a34a;text-align:right;">↑ ${fmt(u.aovLift)}/order</td>
+        </tr>` : ''}
+      </table>
+      ${u.topItems.length > 0 ? `
+      <p style="margin:12px 0 6px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Top Accepted Items</p>
+      ${u.topItems.map((item, i) => `
+        <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;border-bottom:1px solid #f9fafb;">
+          <span style="color:#374151;">${i + 1}. ${item.name}</span>
+          <span style="color:#ea580c;font-weight:700;">${fmt(item.revenue)}</span>
+        </div>`).join('')}` : ''}
+    </td>` : `<td style="width:50%;padding:16px;vertical-align:top;border-right:1px solid #e2e8f0;"><p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;padding:20px 0;">No upsell data this month</p></td>`
+
+  const loyaltyPanel = hasLoyalty && l ? `
+    <td style="width:50%;padding:16px;vertical-align:top;">
+      <p style="margin:0 0 10px;font-size:11px;font-weight:800;color:#d97706;text-transform:uppercase;letter-spacing:0.08em;">⭐ Loyalty</p>
+      <p style="margin:0;font-size:22px;font-weight:800;color:#111827;">${fmtInt(l.activeMembers)}</p>
+      <p style="margin:3px 0 10px;font-size:12px;color:#6b7280;">active members this month</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">Discounts given</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${fmt(l.totalDiscountGiven)} (${l.redemptionOrderCount} orders)</td>
+        </tr>
+        ${l.memberAov > 0 ? `
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">Member avg order</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${fmt(l.memberAov)}</td>
+        </tr>` : ''}
+        ${l.guestAov > 0 ? `
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#6b7280;">Guest avg order</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:700;color:#111827;text-align:right;">${fmt(l.guestAov)}</td>
+        </tr>` : ''}
+        ${l.memberAovLiftPct > 0 && l.guestAov > 0 ? `
+        <tr>
+          <td style="padding:4px 0;font-size:12px;color:#16a34a;font-weight:700;">Member lift</td>
+          <td style="padding:4px 0;font-size:12px;font-weight:800;color:#16a34a;text-align:right;">↑ ${l.memberAovLiftPct}% vs guests</td>
+        </tr>` : ''}
+      </table>
+      ${l.pointsEarned > 0 ? `
+      <div style="margin-top:12px;padding:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;">Points Activity</p>
+        <p style="margin:0;font-size:12px;color:#78350f;">${fmtPts(l.pointsEarned)} earned &nbsp;·&nbsp; ${fmtPts(l.pointsNetRedeemed)} redeemed (net)</p>
+      </div>` : ''}
+    </td>` : `<td style="width:50%;padding:16px;vertical-align:top;"><p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;padding:20px 0;">No loyalty data this month</p></td>`
+
+  return `
+    <table style="width:100%;border-collapse:collapse;">
+      ${sectionHeader('Revenue Impact — Upsell & Loyalty', '📈')}
+      <tr>
+        <td colspan="4" style="padding:0 0 16px;">
+          <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">
+            <tr>
+              ${upsellPanel}
+              ${loyaltyPanel}
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`
 }
 
 export function monthlyReportEmail(d: MonthlyReportData): { subject: string; html: string } {
@@ -331,6 +422,7 @@ export function monthlyReportEmail(d: MonthlyReportData): { subject: string; htm
 
     </table>
 
+    ${buildRevenueImpactSection(d)}
     ${reservationsSection}
     ${insightsSection}
 

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, ClipboardList, Settings,
-  ShoppingBag, LogOut, Shield, CalendarDays, Users, Store, ChevronRight,
+  ShoppingBag, LogOut, Shield, CalendarDays, Users, Store, ChevronRight, BarChart2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/helpers'
@@ -18,6 +18,7 @@ const nav: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: ClipboardList },
   { href: '/reservations', label: 'Reservations', icon: CalendarDays },
   { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/setup', label: 'Restaurant Setup', icon: Settings },
 ]
 

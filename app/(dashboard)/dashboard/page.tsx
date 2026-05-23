@@ -14,6 +14,7 @@ import {
   CalendarDays, CalendarCheck2, CalendarClock, UserCheck, Send,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils/helpers'
+import RevenueInsightCard from '@/components/dashboard/RevenueInsightCard'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTooltip, Legend)
 
@@ -973,6 +974,9 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          {/* Revenue Impact */}
+          <RevenueInsightCard />
 
           {/* Quick Actions */}
           <div>
