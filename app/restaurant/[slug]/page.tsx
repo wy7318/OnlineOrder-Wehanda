@@ -64,7 +64,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [loyaltyBalance, setLoyaltyBalance] = useState(0)
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0)
 
-  const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null)
   // Tracks whether the currently-open ItemModal was triggered by an upsell prompt
   const upsellModalRef = useRef(false)
   const itemCount = cartStore.itemCount()
@@ -465,14 +465,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               {restaurant.categories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => { setActiveCategory(cat.id); categoryRefs.current[cat.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition whitespace-nowrap ${
+                  onClick={() => { setActiveCategory(cat.id); setActiveSubcategory(null) }}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
                     activeCategory === cat.id
                       ? 'bg-brand-500 text-white shadow-sm'
                       : 'text-gray-600 hover:text-brand-500 hover:bg-brand-50'
                   }`}
                 >
                   {cat.name}
+                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
+                    activeCategory === cat.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {filteredItems(cat.id).length}
+                  </span>
                 </button>
               ))}
             </div>
@@ -520,38 +525,64 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   </div>
                 )}
               </div>
-            ) : (
-              restaurant.categories.map(cat => {
-                const catItems = filteredItems(cat.id)
-                if (catItems.length === 0) return null
-                return (
-                  <div key={cat.id} ref={el => { categoryRefs.current[cat.id] = el }} className="mb-10 scroll-mt-16">
-                    <div className="flex items-baseline gap-2 mb-4">
-                      <h2 className="text-lg font-extrabold text-gray-900">{cat.name}</h2>
-                      <span className="text-sm text-gray-400">{catItems.length} items</span>
+            ) : (() => {
+              const cat = restaurant.categories.find(c => c.id === activeCategory)
+              if (!cat) return null
+              const catItems = filteredItems(cat.id)
+              return (
+                <div key={cat.id}>
+                  {cat.subcategories.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-5">
+                      <button
+                        onClick={() => setActiveSubcategory(null)}
+                        className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition ${
+                          activeSubcategory === null ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                        }`}
+                      >
+                        All
+                      </button>
+                      {cat.subcategories.map(sub => (
+                        <button
+                          key={sub.id}
+                          onClick={() => setActiveSubcategory(sub.id)}
+                          className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition ${
+                            activeSubcategory === sub.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                          }`}
+                        >
+                          {sub.name}
+                        </button>
+                      ))}
                     </div>
-                    {cat.subcategories.length > 0 ? (
-                      cat.subcategories.map(sub => {
-                        const subItems = filteredItems(cat.id, sub.id)
-                        if (subItems.length === 0) return null
-                        return (
-                          <div key={sub.id} className="mb-6">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">{sub.name}</p>
-                            <div className="space-y-3">
-                              {subItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
-                            </div>
+                  )}
+                  {activeSubcategory ? (
+                    <div className="space-y-3">
+                      {filteredItems(cat.id, activeSubcategory).map(item => (
+                        <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                      ))}
+                    </div>
+                  ) : cat.subcategories.length > 0 ? (
+                    cat.subcategories.map(sub => {
+                      const subItems = filteredItems(cat.id, sub.id)
+                      if (subItems.length === 0) return null
+                      return (
+                        <div key={sub.id} className="mb-6">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">{sub.name}</p>
+                          <div className="space-y-3">
+                            {subItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
                           </div>
-                        )
-                      })
-                    ) : (
-                      <div className="space-y-3">
-                        {catItems.filter(i => !i.subcategory_id).map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="space-y-3">
+                      {catItems.filter(i => !i.subcategory_id).map(item => (
+                        <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Desktop Cart Sidebar */}
