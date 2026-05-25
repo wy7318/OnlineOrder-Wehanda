@@ -29,11 +29,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-x-hidden">
-        <div className="p-8 max-w-7xl mx-auto">
+        {/* pt-16 on mobile offsets the fixed top bar (h-14 + gap); lg resets to p-8 */}
+        <div className="px-4 pt-16 pb-8 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
-      <div className="fixed top-5 right-5 z-50">
+      {/* On mobile, shift left of the hamburger button; desktop unchanged */}
+      <div className="fixed top-3 right-14 lg:top-5 lg:right-5 z-50">
         <NotificationBell />
       </div>
     </div>

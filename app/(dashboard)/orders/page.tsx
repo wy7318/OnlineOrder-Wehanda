@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Search, RefreshCw, ChevronDown, ChevronUp, Clock, MessageSquare, X, CheckCircle } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils/helpers'
+import { cn } from '@/lib/utils/helpers'
 import type { Order, OrderItem, OrderItemOption, OrderStatus } from '@/lib/types'
 
 /* ─── types ─── */
@@ -18,18 +19,18 @@ type FullOrderItem = OrderItem & {
 
 /* ─── constants ─── */
 
-const KANBAN_COLS: { status: OrderStatus; label: string; dotCls: string; headerCls: string }[] = [
-  { status: 'new',       label: 'New',             dotCls: 'bg-blue-500',   headerCls: 'border-blue-100 bg-blue-50/60' },
-  { status: 'accepted',  label: 'Accepted',         dotCls: 'bg-brand-500', headerCls: 'border-brand-100 bg-brand-50/60' },
-  { status: 'preparing', label: 'Preparing',        dotCls: 'bg-amber-500',  headerCls: 'border-amber-100 bg-amber-50/60' },
-  { status: 'ready',     label: 'Ready for Pickup', dotCls: 'bg-green-500',  headerCls: 'border-green-100 bg-green-50/60' },
+const KANBAN_COLS: { status: OrderStatus; label: string; mobileLabel: string; dotCls: string; headerCls: string }[] = [
+  { status: 'new',       label: 'New',             mobileLabel: 'New',       dotCls: 'bg-blue-500',   headerCls: 'border-blue-100 bg-blue-50/60' },
+  { status: 'accepted',  label: 'Accepted',         mobileLabel: 'Accepted',  dotCls: 'bg-brand-500',  headerCls: 'border-brand-100 bg-brand-50/60' },
+  { status: 'preparing', label: 'Preparing',        mobileLabel: 'Preparing', dotCls: 'bg-amber-500',  headerCls: 'border-amber-100 bg-amber-50/60' },
+  { status: 'ready',     label: 'Ready for Pickup', mobileLabel: 'Ready',     dotCls: 'bg-green-500',  headerCls: 'border-green-100 bg-green-50/60' },
 ]
 
 const ADVANCE: Partial<Record<OrderStatus, { label: string; cls: string; next: OrderStatus }>> = {
-  new:       { label: 'Accept Order',  cls: 'bg-emerald-500 hover:bg-emerald-600 text-white',  next: 'accepted' },
-  accepted:  { label: 'Start Preparing', cls: 'bg-brand-500 hover:bg-brand-600 text-white',  next: 'preparing' },
-  preparing: { label: 'Mark Ready',    cls: 'bg-blue-500 hover:bg-blue-600 text-white',         next: 'ready' },
-  ready:     { label: 'Complete',      cls: 'bg-gray-700 hover:bg-gray-800 text-white',         next: 'completed' },
+  new:       { label: 'Accept Order',    cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', next: 'accepted' },
+  accepted:  { label: 'Start Preparing', cls: 'bg-brand-500 hover:bg-brand-600 text-white',     next: 'preparing' },
+  preparing: { label: 'Mark Ready',      cls: 'bg-blue-500 hover:bg-blue-600 text-white',        next: 'ready' },
+  ready:     { label: 'Complete',        cls: 'bg-gray-700 hover:bg-gray-800 text-white',        next: 'completed' },
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -79,6 +80,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [mobileTab, setMobileTab] = useState<OrderStatus>('new')
 
   // Modal state
   const [modalOrder, setModalOrder] = useState<OrderRow | null>(null)
@@ -136,8 +138,8 @@ export default function OrdersPage() {
       )
     : orders
 
-  const active   = filtered.filter(o => ['new', 'accepted', 'preparing', 'ready'].includes(o.status))
-  const history  = filtered.filter(o => o.status === 'completed' || o.status === 'cancelled')
+  const active  = filtered.filter(o => ['new', 'accepted', 'preparing', 'ready'].includes(o.status))
+  const history = filtered.filter(o => o.status === 'completed' || o.status === 'cancelled')
 
   /* ── actions ── */
   async function advanceStatus(e: React.MouseEvent, order: OrderRow, next: OrderStatus) {
@@ -179,9 +181,15 @@ export default function OrdersPage() {
     setLoadingItems(false)
   }
 
-  /* ── render ── */
+  /* ── derived ── */
   const activeCount = orders.filter(o => ['new', 'accepted', 'preparing', 'ready'].includes(o.status)).length
   const newCount    = orders.filter(o => o.status === 'new').length
+
+  const mobileTabOrders = active
+    .filter(o => o.status === mobileTab)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  const mobileCol = KANBAN_COLS.find(c => c.status === mobileTab)!
 
   return (
     <div className="flex flex-col h-full pb-4">
@@ -191,31 +199,139 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-[15px] text-gray-400 mt-0.5">
-            {activeCount} active · {newCount > 0 && <span className="text-blue-600 font-medium">{newCount} new</span>}
-            {newCount === 0 && 'all caught up'}
+            {activeCount} active ·{' '}
+            {newCount > 0
+              ? <span className="text-blue-600 font-medium">{newCount} new</span>
+              : 'all caught up'
+            }
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Order #, name, phone…"
-              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-brand-400 w-56"
+              className="w-full sm:w-56 pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-brand-400"
             />
           </div>
           <button
             onClick={() => loadOrders()}
-            className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:text-brand-500 hover:border-brand-200 transition"
+            className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:text-brand-500 hover:border-brand-200 transition shrink-0"
           >
             <RefreshCw size={15} />
           </button>
         </div>
       </div>
 
-      {/* ─── Kanban Board ─── */}
-      <div className="flex gap-4 overflow-x-auto pb-3 flex-1">
+      {/* ─── MOBILE: Tab bar + list ─────────────────────────────── */}
+      <div className="lg:hidden flex flex-col flex-1 min-h-0">
+
+        {/* Tab bar */}
+        <div className="grid grid-cols-4 gap-1 bg-gray-100 rounded-2xl p-1 mb-4 shrink-0">
+          {KANBAN_COLS.map(col => {
+            const count = active.filter(o => o.status === col.status).length
+            const isActive = mobileTab === col.status
+            return (
+              <button
+                key={col.status}
+                onClick={() => setMobileTab(col.status)}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-semibold transition-all',
+                  isActive ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500',
+                )}
+              >
+                <span className={cn('w-2 h-2 rounded-full', col.dotCls)} />
+                <span className="leading-none">{col.mobileLabel}</span>
+                {count > 0 && (
+                  <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white', col.dotCls)}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Order list for active tab */}
+        <div className="flex-1 overflow-y-auto space-y-3">
+          {mobileTabOrders.length === 0 ? (
+            <div className="py-20 flex flex-col items-center text-gray-300">
+              <CheckCircle size={36} className="mb-3 opacity-40" />
+              <p className="text-sm font-medium">No {mobileCol.label} orders</p>
+            </div>
+          ) : (
+            mobileTabOrders.map(order => {
+              const age = agePill(order.status, order.created_at)
+              const adv = ADVANCE[order.status]
+              const isUpdating = updatingId === order.id
+              const itemCount = order.order_items?.length ?? 0
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => openModal(order)}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 cursor-pointer active:bg-gray-50 transition-all"
+                >
+                  {/* Row 1: order # + age + type */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="font-mono text-sm font-bold text-gray-900 flex-1">{order.order_number}</span>
+                    <span className={cn('text-[11px] font-medium px-2 py-0.5 rounded-full border', TYPE_BADGE[order.order_type] ?? 'bg-gray-100 text-gray-500 border-gray-200')}>
+                      {TYPE_LABEL[order.order_type] ?? order.order_type}
+                    </span>
+                    <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1', age.cls)}>
+                      <Clock size={10} /> {age.label}
+                    </span>
+                  </div>
+
+                  {/* Row 2: customer + total */}
+                  <div className="flex items-baseline justify-between mb-1">
+                    <p className="text-base font-semibold text-gray-900 truncate flex-1 mr-3">{order.customer_name}</p>
+                    <p className="text-base font-bold text-gray-900 shrink-0">{formatCurrency(order.total_amount)}</p>
+                  </div>
+
+                  {/* Row 3: item count + time */}
+                  <p className="text-sm text-gray-400 mb-3">
+                    {itemCount} item{itemCount !== 1 ? 's' : ''} · {fmtTime(order.created_at)}
+                    {order.order_type === 'delivery' && <span className="ml-1 text-brand-500 font-medium"> · Delivery</span>}
+                  </p>
+
+                  {/* Notes */}
+                  {order.order_notes && (
+                    <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-xl mb-3">
+                      <MessageSquare size={12} className="mt-0.5 shrink-0" />
+                      <span className="line-clamp-2">{order.order_notes}</span>
+                    </div>
+                  )}
+
+                  {/* Action buttons — large touch targets */}
+                  <div className="flex gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                    {adv && (
+                      <button
+                        onClick={e => advanceStatus(e, order, adv.next)}
+                        disabled={isUpdating}
+                        className={cn('flex-1 py-3 rounded-xl text-sm font-bold transition disabled:opacity-60', adv.cls)}
+                      >
+                        {isUpdating ? '…' : adv.label}
+                      </button>
+                    )}
+                    <button
+                      onClick={e => cancelOrder(e, order)}
+                      disabled={isUpdating}
+                      className="px-4 py-3 rounded-xl border-2 border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ─── DESKTOP: Kanban board (unchanged) ──────────────────── */}
+      <div className="hidden lg:flex gap-4 overflow-x-auto pb-3 flex-1">
         {KANBAN_COLS.map(col => {
           const colOrders = active
             .filter(o => o.status === col.status)
@@ -226,7 +342,6 @@ export default function OrdersPage() {
               key={col.status}
               className="flex flex-col min-w-[272px] w-72 flex-shrink-0 rounded-2xl border border-gray-100 bg-gray-50/50 overflow-hidden"
             >
-              {/* Column header */}
               <div className={`flex items-center justify-between px-3 py-2.5 border-b ${col.headerCls}`}>
                 <div className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${col.dotCls}`} />
@@ -237,7 +352,6 @@ export default function OrdersPage() {
                 </span>
               </div>
 
-              {/* Cards */}
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {colOrders.length === 0 && (
                   <div className="py-10 text-center text-gray-300 text-sm">
@@ -255,7 +369,6 @@ export default function OrdersPage() {
                       onClick={() => openModal(order)}
                       className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 cursor-pointer hover:border-brand-200 hover:shadow-md transition-all group"
                     >
-                      {/* Row 1: order # + type + age */}
                       <div className="flex items-center gap-1.5 mb-2">
                         <span className="font-mono text-xs font-bold text-gray-800 flex-1">{order.order_number}</span>
                         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${TYPE_BADGE[order.order_type] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
@@ -267,13 +380,11 @@ export default function OrdersPage() {
                         </span>
                       </div>
 
-                      {/* Row 2: customer + total */}
                       <div className="flex items-baseline justify-between mb-1.5">
                         <p className="text-sm font-semibold text-gray-900 truncate flex-1 mr-2">{order.customer_name}</p>
                         <p className="text-sm font-bold text-gray-900 shrink-0">{formatCurrency(order.total_amount)}</p>
                       </div>
 
-                      {/* Row 3: item count */}
                       <p className="text-xs text-gray-400 mb-2">
                         {itemCount} item{itemCount !== 1 ? 's' : ''}
                         {order.order_type === 'delivery' && order.delivery_address && (
@@ -281,7 +392,6 @@ export default function OrdersPage() {
                         )}
                       </p>
 
-                      {/* Notes */}
                       {order.order_notes && (
                         <div className="flex items-start gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg mb-2">
                           <MessageSquare size={10} className="mt-0.5 shrink-0" />
@@ -289,7 +399,6 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {/* Action buttons */}
                       <div className="flex gap-1.5 mt-1" onClick={e => e.stopPropagation()}>
                         {adv && (
                           <button
@@ -319,8 +428,8 @@ export default function OrdersPage() {
         })}
       </div>
 
-      {/* ─── History Section ─── */}
-      <div className="mt-4">
+      {/* ─── History ─── */}
+      <div className="mt-4 shrink-0">
         <button
           onClick={() => setShowHistory(v => !v)}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition font-medium"
@@ -330,49 +439,77 @@ export default function OrdersPage() {
         </button>
 
         {showHistory && (
-          <div className="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="mt-3">
             {history.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">No completed or cancelled orders</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      {['Order #', 'Customer', 'Type', 'Items', 'Total', 'Status', 'Time'].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {history.map(order => (
-                      <tr
-                        key={order.id}
-                        onClick={() => openModal(order)}
-                        className="hover:bg-gray-50 cursor-pointer transition"
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs text-gray-600">{order.order_number}</td>
-                        <td className="px-4 py-2.5">
-                          <p className="font-medium text-gray-800">{order.customer_name}</p>
-                          <p className="text-xs text-gray-400">{order.customer_phone}</p>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${TYPE_BADGE[order.order_type] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            {TYPE_LABEL[order.order_type] ?? order.order_type}
+              <>
+                {/* Mobile history: cards */}
+                <div className="lg:hidden space-y-2">
+                  {history.map(order => (
+                    <div
+                      key={order.id}
+                      onClick={() => openModal(order)}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 cursor-pointer active:bg-gray-50 transition"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-mono text-xs font-bold text-gray-600">{order.order_number}</span>
+                          <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full', order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600')}>
+                            {order.status === 'completed' ? 'Done' : 'Cancelled'}
                           </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs">{order.order_items?.length ?? 0} items</td>
-                        <td className="px-4 py-2.5 font-semibold text-gray-800">{formatCurrency(order.total_amount)}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                            {order.status === 'completed' ? 'Completed' : 'Cancelled'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">{fmtTime(order.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800 truncate">{order.customer_name}</p>
+                        <p className="text-xs text-gray-400">{fmtTime(order.created_at)} · {order.order_items?.length ?? 0} items</p>
+                      </div>
+                      <span className="font-bold text-gray-900 shrink-0">{formatCurrency(order.total_amount)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop history: table */}
+                <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          {['Order #', 'Customer', 'Type', 'Items', 'Total', 'Status', 'Time'].map(h => (
+                            <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {history.map(order => (
+                          <tr
+                            key={order.id}
+                            onClick={() => openModal(order)}
+                            className="hover:bg-gray-50 cursor-pointer transition"
+                          >
+                            <td className="px-4 py-2.5 font-mono text-xs text-gray-600">{order.order_number}</td>
+                            <td className="px-4 py-2.5">
+                              <p className="font-medium text-gray-800">{order.customer_name}</p>
+                              <p className="text-xs text-gray-400">{order.customer_phone}</p>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${TYPE_BADGE[order.order_type] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                {TYPE_LABEL[order.order_type] ?? order.order_type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-500 text-xs">{order.order_items?.length ?? 0} items</td>
+                            <td className="px-4 py-2.5 font-semibold text-gray-800">{formatCurrency(order.total_amount)}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                                {order.status === 'completed' ? 'Completed' : 'Cancelled'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">{fmtTime(order.created_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -416,13 +553,13 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[calc(100vh-32px)] mt-0">
+      <div className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-32px)]">
 
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono font-bold text-gray-900">{order.order_number}</span>
             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${TYPE_BADGE[order.order_type] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
               {TYPE_LABEL[order.order_type] ?? order.order_type}
@@ -438,15 +575,13 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
             </span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition p-1">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition p-1 ml-2 shrink-0">
             <X size={18} />
           </button>
         </div>
 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-5">
-
-          {/* Customer info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
@@ -464,7 +599,6 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             </div>
           </div>
 
-          {/* Delivery address */}
           {order.delivery_address && (
             <div className="bg-brand-50 border border-brand-100 rounded-xl p-3">
               <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider mb-1">Delivery Address</p>
@@ -475,7 +609,6 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             </div>
           )}
 
-          {/* Order notes */}
           {order.order_notes && (
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2">
               <MessageSquare size={14} className="text-amber-600 shrink-0 mt-0.5" />
@@ -486,14 +619,11 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             </div>
           )}
 
-          {/* Items */}
           <div>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Items</p>
             {loadingItems ? (
               <div className="space-y-2">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="animate-pulse bg-gray-100 rounded-xl h-12" />
-                ))}
+                {[1, 2, 3].map(i => <div key={i} className="animate-pulse bg-gray-100 rounded-xl h-12" />)}
               </div>
             ) : (
               <div className="space-y-2">
@@ -511,9 +641,7 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
                           )}
                         </p>
                       ))}
-                      {item.notes && (
-                        <p className="text-xs text-amber-600 italic mt-0.5">"{item.notes}"</p>
-                      )}
+                      {item.notes && <p className="text-xs text-amber-600 italic mt-0.5">"{item.notes}"</p>}
                     </div>
                     <span className="font-semibold text-gray-900 ml-4 text-sm shrink-0">{formatCurrency(item.line_total)}</span>
                   </div>
@@ -522,7 +650,6 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             )}
           </div>
 
-          {/* Totals */}
           <div className="border-t border-gray-100 pt-4 space-y-1.5">
             <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
             <div className="flex justify-between text-sm text-gray-500"><span>Tax</span><span>{formatCurrency(order.tax_amount)}</span></div>
@@ -531,25 +658,23 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             )}
             {(order.loyalty_discount_amount ?? 0) > 0 && (
               <div className="flex justify-between text-sm text-amber-600 font-medium">
-                <span>Rewards discount</span>
-                <span>-{formatCurrency(order.loyalty_discount_amount)}</span>
+                <span>Rewards discount</span><span>-{formatCurrency(order.loyalty_discount_amount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100">
-              <span>Total</span>
-              <span>{formatCurrency(order.total_amount)}</span>
+              <span>Total</span><span>{formatCurrency(order.total_amount)}</span>
             </div>
           </div>
         </div>
 
-        {/* Footer action buttons */}
-        {order.status !== 'completed' && order.status !== 'cancelled' && (
+        {/* Footer */}
+        {order.status !== 'completed' && order.status !== 'cancelled' ? (
           <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-2">
             {adv && (
               <button
                 onClick={() => onAdvance(adv.next)}
                 disabled={isUpdating}
-                className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-60 ${adv.cls}`}
+                className={`flex-1 py-3 rounded-xl font-semibold text-sm transition disabled:opacity-60 ${adv.cls}`}
               >
                 {isUpdating ? 'Updating…' : adv.label}
               </button>
@@ -557,14 +682,12 @@ function OrderDetailModal({ order, items, loadingItems, updatingId, onClose, onA
             <button
               onClick={onCancel}
               disabled={isUpdating}
-              className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 font-medium text-sm transition disabled:opacity-60"
+              className="px-4 py-3 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 font-medium text-sm transition disabled:opacity-60"
             >
               Cancel Order
             </button>
           </div>
-        )}
-
-        {(order.status === 'completed' || order.status === 'cancelled') && (
+        ) : (
           <div className="px-5 py-4 border-t border-gray-100 shrink-0">
             <p className={`text-center text-sm font-medium ${order.status === 'completed' ? 'text-green-600' : 'text-red-500'}`}>
               {order.status === 'completed' ? '✓ Order completed' : '✕ Order cancelled'}
