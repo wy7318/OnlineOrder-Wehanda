@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateOrderNumber } from '@/lib/utils/helpers'
 import { sendEmail } from '@/lib/email'
@@ -14,6 +15,8 @@ export async function POST(request: Request) {
       marketing_opt_in,
       loyalty_points_redeemed = 0,
       loyalty_discount_amount = 0,
+      payment_method = 'cash',
+      stripe_payment_intent_id = null,
     } = body
 
     if (!restaurant_id || !customer_name || !customer_phone || !items?.length) {
@@ -31,6 +34,33 @@ export async function POST(request: Request) {
 
     if (rErr || !restaurant || !restaurant.is_active || !restaurant.online_ordering_enabled) {
       return NextResponse.json({ error: 'Restaurant is not accepting orders' }, { status: 403 })
+    }
+
+    // Verify Stripe payment intent when paying by card — use platform's env keys
+    if (payment_method === 'stripe') {
+      if (!stripe_payment_intent_id) {
+        return NextResponse.json({ error: 'Missing payment intent' }, { status: 400 })
+      }
+      const { data: paySettings } = await supabase
+        .from('restaurant_payment_settings')
+        .select('stripe_enabled, stripe_mode')
+        .eq('restaurant_id', restaurant_id)
+        .single()
+
+      if (paySettings?.stripe_enabled) {
+        const isTestMode = paySettings.stripe_mode === 'test'
+        const secretKey = isTestMode
+          ? process.env.STRIPE_TEST_SECRET_KEY
+          : process.env.STRIPE_SECRET_KEY
+
+        if (secretKey) {
+          const stripeClient = new Stripe(secretKey)
+          const pi = await stripeClient.paymentIntents.retrieve(stripe_payment_intent_id)
+          if (pi.status !== 'succeeded') {
+            return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 })
+          }
+        }
+      }
     }
 
     // Recalculate tax and total server-side — never trust client values
@@ -179,6 +209,9 @@ export async function POST(request: Request) {
         subtotal, tax_amount, fee_amount: tip, total_amount,
         loyalty_points_redeemed: loyaltyPointsRedeemed,
         loyalty_discount_amount: loyaltyDiscountAmount,
+        payment_method,
+        stripe_payment_intent_id: payment_method === 'stripe' ? stripe_payment_intent_id : null,
+        payment_status: payment_method === 'stripe' ? 'paid' : 'unpaid',
       })
       .select()
       .single()

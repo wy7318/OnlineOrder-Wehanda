@@ -12,11 +12,13 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed, Star } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed, Star, CreditCard } from 'lucide-react'
 import Image from 'next/image'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
 import LoyaltySetupWizard from '@/components/dashboard/LoyaltySetupWizard'
+import StripeSetupWizard from '@/components/dashboard/StripeSetupWizard'
+import type { StripeSettings } from '@/components/dashboard/StripeSetupWizard'
 import type { LoyaltyProgram } from '@/lib/types'
 
 const CUISINE_OPTIONS = [
@@ -72,6 +74,29 @@ function SetupContent() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [loyaltyProgram, setLoyaltyProgram] = useState<LoyaltyProgram | null>(null)
   const [loyaltyWizardOpen, setLoyaltyWizardOpen] = useState(false)
+  const [stripeSettings, setStripeSettings] = useState<StripeSettings | null>(null)
+  const [stripeWizardOpen, setStripeWizardOpen] = useState(false)
+
+  // Handle return from Stripe OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('stripe_connected') === '1') {
+      toast('Stripe connected successfully!', 'success')
+      window.history.replaceState({}, '', '/setup')
+      fetch('/api/stripe/settings').then(r => r.ok ? r.json() : null).then(d => { if (d) setStripeSettings(d) })
+    } else if (params.get('stripe_error')) {
+      const code = params.get('stripe_error')
+      const detail = params.get('detail')
+      const messages: Record<string, string> = {
+        not_configured: 'Stripe is not configured on the platform yet.',
+        access_denied: 'Stripe authorization was cancelled.',
+        exchange_failed: `Stripe connection failed: ${detail ?? 'unknown error'}`,
+        db_save_failed: `Connected to Stripe but failed to save: ${detail ?? 'unknown error'}`,
+      }
+      toast(messages[code!] ?? 'Stripe connection failed. Please try again.', 'error')
+      window.history.replaceState({}, '', '/setup')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [cuisineTypes, setCuisineTypes] = useState<string[]>([])
   const [hours, setHours] = useState(defaultHours())
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -130,6 +155,10 @@ function SetupContent() {
         // Load loyalty program
         const lpRes = await fetch(`/api/loyalty/program?restaurant_id=${r.id}`)
         if (lpRes.ok) setLoyaltyProgram(await lpRes.json())
+
+        // Load Stripe settings
+        const sRes = await fetch('/api/stripe/settings')
+        if (sRes.ok) setStripeSettings(await sRes.json())
       }
     }
     load()
@@ -788,6 +817,42 @@ function SetupContent() {
               </button>
             </div>
           )}
+
+          {/* Stripe Payments card */}
+          {restaurant && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <CreditCard size={17} className="text-indigo-500" /> Online Payments
+                </h3>
+                {stripeSettings?.stripe_enabled && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
+                )}
+              </div>
+              {stripeSettings?.stripe_enabled ? (
+                <div className="space-y-1.5 mb-4">
+                  <p className="text-sm font-bold text-gray-800">Stripe connected</p>
+                  <p className="text-xs text-gray-500 font-mono">{stripeSettings.stripe_account_id?.slice(0, 14)}…</p>
+                  <p className="text-xs text-gray-400">
+                    Mode: <span className={`font-semibold ${stripeSettings.stripe_mode === 'test' ? 'text-amber-600' : 'text-green-600'}`}>
+                      {stripeSettings.stripe_mode === 'test' ? 'Test (admin)' : 'Live'}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mb-4">
+                  Accept card payments online via Stripe. Customers pay at checkout instead of at the restaurant.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setStripeWizardOpen(true)}
+                className="w-full py-2 rounded-xl border-2 border-indigo-200 text-indigo-600 text-sm font-bold hover:bg-indigo-50 transition"
+              >
+                {stripeSettings?.stripe_enabled ? 'Manage Stripe' : 'Set Up Payments'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -797,6 +862,15 @@ function SetupContent() {
           existing={loyaltyProgram}
           onSaved={saved => { setLoyaltyProgram(saved); setLoyaltyWizardOpen(false) }}
           onClose={() => setLoyaltyWizardOpen(false)}
+        />
+      )}
+
+      {stripeWizardOpen && restaurant && (
+        <StripeSetupWizard
+          restaurantId={restaurant.id}
+          existing={stripeSettings}
+          onSaved={saved => { setStripeSettings(saved); setStripeWizardOpen(false) }}
+          onClose={() => setStripeWizardOpen(false)}
         />
       )}
     </>

@@ -5,7 +5,8 @@ import Link from 'next/link'
 import {
   ShoppingBag, Users, Store, Plus, RefreshCw, LogOut,
   ChevronRight, ToggleLeft, ToggleRight, Trash2, UserPlus,
-  Building2, CheckCircle2, XCircle, ExternalLink,
+  Building2, CheckCircle2, XCircle, ExternalLink, CreditCard,
+  FlaskConical, Globe,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -29,7 +30,19 @@ interface User {
   restaurants: { id: string; name: string }[]
 }
 
-type Tab = 'restaurants' | 'users'
+type Tab = 'restaurants' | 'users' | 'payments'
+
+interface PaymentRow {
+  id: string
+  name: string
+  slug: string
+  payment_settings: {
+    stripe_enabled: boolean
+    stripe_mode: 'live' | 'test'
+    stripe_account_id: string | null
+    connected_at: string | null
+  } | null
+}
 
 export default function AdminPage() {
   const router = useRouter()
@@ -38,8 +51,10 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('restaurants')
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [adminEmail, setAdminEmail] = useState('')
+  const [togglingModeId, setTogglingModeId] = useState<string | null>(null)
 
   // Modals
   const [showCreateRestaurant, setShowCreateRestaurant] = useState(false)
@@ -69,14 +84,35 @@ export default function AdminPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [rRes, uRes] = await Promise.all([
+    const [rRes, uRes, pRes] = await Promise.all([
       fetch('/api/admin/restaurants'),
       fetch('/api/admin/users'),
+      fetch('/api/admin/stripe/restaurants'),
     ])
     if (rRes.ok) setRestaurants(await rRes.json())
     if (uRes.ok) setUsers(await uRes.json())
+    if (pRes.ok) setPaymentRows(await pRes.json())
     setLoading(false)
   }, [])
+
+  async function handleToggleStripeMode(row: PaymentRow) {
+    if (!row.payment_settings) return
+    const newMode = row.payment_settings.stripe_mode === 'test' ? 'live' : 'test'
+    setTogglingModeId(row.id)
+    const res = await fetch('/api/admin/stripe/test-mode', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurant_id: row.id, mode: newMode }),
+    })
+    if (res.ok) {
+      setPaymentRows(prev => prev.map(r =>
+        r.id === row.id && r.payment_settings
+          ? { ...r, payment_settings: { ...r.payment_settings, stripe_mode: newMode } }
+          : r
+      ))
+    }
+    setTogglingModeId(null)
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -221,16 +257,20 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
-          {(['restaurants', 'users'] as Tab[]).map(t => (
+          {([
+            { id: 'restaurants', label: 'Restaurants', icon: Store },
+            { id: 'users', label: 'Users', icon: Users },
+            { id: 'payments', label: 'Payments', icon: CreditCard },
+          ] as { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[]).map(t => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition capitalize ${
-                tab === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                tab === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t === 'restaurants' ? <Store size={14} /> : <Users size={14} />}
-              {t}
+              <t.icon size={14} />
+              {t.label}
             </button>
           ))}
         </div>
@@ -249,8 +289,14 @@ export default function AdminPage() {
             onEnter={handleEnterDashboard}
             onChangeOwner={(r) => { setShowChangeOwner(r); setCoOwner(r.owner_user_id) }}
           />
-        ) : (
+        ) : tab === 'users' ? (
           <UsersTable users={users} />
+        ) : (
+          <PaymentsTable
+            rows={paymentRows}
+            togglingModeId={togglingModeId}
+            onToggleMode={handleToggleStripeMode}
+          />
         )}
       </div>
 
@@ -566,6 +612,111 @@ function UsersTable({ users }: { users: User[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+function PaymentsTable({
+  rows, togglingModeId, onToggleMode,
+}: {
+  rows: PaymentRow[]
+  togglingModeId: string | null
+  onToggleMode: (r: PaymentRow) => void
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 text-center text-gray-400">
+        <CreditCard size={32} className="mx-auto mb-3 opacity-30" />
+        <p>No restaurants found.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-start gap-3">
+        <FlaskConical size={16} className="text-amber-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-amber-800">Test Mode Toggle — Admin Only</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Switching a restaurant to <strong>Test</strong> mode makes their checkout use Stripe test keys.
+            Use card <strong>4242 4242 4242 4242</strong> with any future date and CVC.
+            This toggle is only visible to platform admins.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {['Restaurant', 'Stripe Status', 'Keys', 'Mode (Test/Live)', 'Portal'].map(h => (
+                  <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {rows.map(r => {
+                const ps = r.payment_settings
+                const isTest = ps?.stripe_mode === 'test'
+                return (
+                  <tr key={r.id} className="hover:bg-gray-50 transition">
+                    <td className="px-5 py-4">
+                      <div className="font-semibold text-gray-900">{r.name}</div>
+                      <div className="text-xs text-gray-400 font-mono">/restaurant/{r.slug}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      {ps?.stripe_enabled ? (
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-full w-fit">
+                          <CheckCircle2 size={12} /> Enabled
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full w-fit">
+                          <XCircle size={12} /> Not set up
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-xs text-gray-500">
+                      {ps?.stripe_account_id
+                        ? <span className="font-mono text-gray-600">{ps.stripe_account_id.slice(0, 14)}…</span>
+                        : <span className="text-gray-300">—</span>
+                      }
+                    </td>
+                    <td className="px-5 py-4">
+                      {ps?.stripe_enabled ? (
+                        <button
+                          onClick={() => onToggleMode(r)}
+                          disabled={togglingModeId === r.id}
+                          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition disabled:opacity-50 ${
+                            isTest
+                              ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {isTest ? <FlaskConical size={12} /> : <Globe size={12} />}
+                          {togglingModeId === r.id ? 'Switching…' : isTest ? 'Test mode' : 'Live mode'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/restaurant/${r.slug}`}
+                        target="_blank"
+                        className="flex items-center gap-1 text-xs font-semibold text-blue-500 hover:text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition w-fit"
+                      >
+                        <ExternalLink size={12} /> View
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useCartStore } from '@/store/cart'
 import { isRestaurantOpen } from '@/lib/utils/hours'
 import { formatCurrency } from '@/lib/utils/helpers'
 import Image from 'next/image'
-import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Plus } from 'lucide-react'
+import { Search, ShoppingBag, MapPin, Phone, Clock, X, Utensils, CalendarDays, User, Plus, CreditCard, Banknote } from 'lucide-react'
 import ItemModal from '@/components/customer/ItemModal'
 import Cart from '@/components/customer/Cart'
 import ReservationModal from '@/components/customer/ReservationModal'
@@ -17,6 +17,10 @@ import CustomerMenu from '@/components/customer/CustomerMenu'
 import ReservationHistory from '@/components/customer/ReservationHistory'
 import CustomerSettingsPanel from '@/components/customer/CustomerSettingsPanel'
 import LoyaltyWidget from '@/components/customer/LoyaltyWidget'
+import StripeCardCapture from '@/components/customer/StripeCardCapture'
+import type { ConfirmPaymentFn } from '@/components/customer/StripeCardCapture'
+import { Elements } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 import type { Category, CustomerProfile, LoyaltyProgram, MenuItem, Option, OptionGroup, PublicRestaurant, Subcategory, Tag, CartOption } from '@/lib/types'
 import { Star } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
@@ -65,8 +69,21 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0)
 
   const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null)
+  const [stripeEnabled, setStripeEnabled] = useState(false)
+  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null)
+  const [stripeIsTestMode, setStripeIsTestMode] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('cash')
+  const [stripePaymentError, setStripePaymentError] = useState('')
+  const stripeConfirmRef = useRef<ConfirmPaymentFn | null>(null)
+
   // Tracks whether the currently-open ItemModal was triggered by an upsell prompt
   const upsellModalRef = useRef(false)
+  // Lazily load Stripe.js only when a publishable key is available
+  const stripePromise = useMemo(
+    () => stripePublishableKey ? loadStripe(stripePublishableKey) : null,
+    [stripePublishableKey]
+  )
+
   const itemCount = cartStore.itemCount()
   const subtotal = cartStore.subtotal()
 
@@ -198,6 +215,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
       .then(lp => { if (lp?.is_enabled) setLoyaltyProgram(lp) })
       .catch(() => {})
 
+    // Fetch Stripe config (public — never returns secret key)
+    fetch(`/api/stripe/public-config?restaurant_id=${r.id}`)
+      .then(res => res.json())
+      .then(cfg => {
+        if (cfg?.stripe_enabled && cfg.publishable_key) {
+          setStripeEnabled(true)
+          setStripePublishableKey(cfg.publishable_key)
+          setStripeIsTestMode(!!cfg.is_test_mode)
+          setPaymentMethod('card')
+        }
+      })
+      .catch(() => {})
+
     if (r.pickup_enabled) setOrderType('pickup')
     else if (r.dine_in_enabled) setOrderType('dine_in')
     else if (r.delivery_enabled) setOrderType('delivery')
@@ -247,6 +277,32 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     if (!checkoutForm.name || !checkoutForm.phone) return
 
     setCheckoutLoading(true)
+    setStripePaymentError('')
+
+    // Stripe payment must succeed before creating the order
+    let stripePaymentIntentId: string | undefined
+    if (paymentMethod === 'card' && stripeEnabled && stripeConfirmRef.current) {
+      const amountCents = Math.round(totalAmount * 100)
+      const piRes = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: restaurant.id, amount_cents: amountCents }),
+      })
+      if (!piRes.ok) {
+        const d = await piRes.json()
+        setStripePaymentError(d.error ?? 'Could not start payment')
+        setCheckoutLoading(false)
+        return
+      }
+      const { client_secret } = await piRes.json()
+      const { error, paymentIntentId } = await stripeConfirmRef.current(client_secret)
+      if (error || !paymentIntentId) {
+        setStripePaymentError(error ?? 'Payment was not completed')
+        setCheckoutLoading(false)
+        return
+      }
+      stripePaymentIntentId = paymentIntentId
+    }
 
     // Compose order notes — prepend utensil request if selected
     const noteParts: string[] = []
@@ -272,6 +328,8 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
         customer_user_id: customerSession?.user?.id ?? null,
         loyalty_points_redeemed: loyaltyPointsToRedeem,
         loyalty_discount_amount: loyaltyDiscountAmount,
+        payment_method: stripePaymentIntentId ? 'stripe' : 'cash',
+        stripe_payment_intent_id: stripePaymentIntentId ?? null,
         items: cartStore.items.map(item => ({
           menu_item_id: item.menu_item_id,
           item_name_snapshot: item.name,
@@ -875,14 +933,59 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   </p>
                 </label>
 
-                {/* Payment note */}
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5 flex items-center gap-3">
-                  <span className="text-xl">💳</span>
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900">Pay at restaurant</p>
-                    <p className="text-xs text-blue-500">Card or cash accepted</p>
+                {/* Payment method */}
+                {stripeEnabled ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-bold text-gray-700">Payment</p>
+                    {stripeIsTestMode && (
+                      <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                        <span className="text-xs font-bold text-amber-700">TEST MODE — use card 4242 4242 4242 4242</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 text-sm font-bold transition ${
+                          paymentMethod === 'card' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        <CreditCard size={18} /> Pay by card
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 text-sm font-bold transition ${
+                          paymentMethod === 'cash' ? 'border-gray-700 bg-gray-50 text-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        <Banknote size={18} /> Pay at restaurant
+                      </button>
+                    </div>
+                    {paymentMethod === 'card' && stripePromise && (
+                      <Elements stripe={stripePromise}>
+                        <StripeCardCapture
+                          onReady={fn => { stripeConfirmRef.current = fn }}
+                          onError={msg => setStripePaymentError(msg)}
+                        />
+                      </Elements>
+                    )}
+                    {paymentMethod === 'card' && !stripePromise && (
+                      <p className="text-xs text-gray-400">Loading payment form…</p>
+                    )}
+                    {stripePaymentError && (
+                      <p className="text-sm text-red-600 font-medium">{stripePaymentError}</p>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3.5 flex items-center gap-3">
+                    <span className="text-xl">💳</span>
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">Pay at restaurant</p>
+                      <p className="text-xs text-blue-500">Card or cash accepted</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary */}
                 <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
@@ -915,7 +1018,9 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
               >
                 {checkoutLoading
                   ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  : `Place Order · ${formatCurrency(totalAmount)}`}
+                  : paymentMethod === 'card'
+                    ? `Pay ${formatCurrency(totalAmount)} with card`
+                    : `Place Order · ${formatCurrency(totalAmount)}`}
               </button>
             </div>
           </div>

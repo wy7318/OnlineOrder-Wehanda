@@ -348,6 +348,19 @@ export interface LoyaltyTransaction {
 // ── Order ─────────────────────────────────────────────────────
 export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled'
 export type OrderType = 'pickup' | 'dine_in' | 'delivery'
+export type PaymentMethod = 'cash' | 'stripe'
+export type PaymentStatus = 'unpaid' | 'paid' | 'failed' | 'refunded'
+
+export interface RestaurantPaymentSettings {
+  id: string
+  restaurant_id: string
+  stripe_enabled: boolean
+  stripe_account_id: string | null   // Connected Stripe account via OAuth
+  stripe_mode: 'live' | 'test'
+  connected_at: string | null
+  created_at: string
+  updated_at: string
+}
 
 export interface Order {
   id: string
@@ -363,6 +376,9 @@ export interface Order {
   total_amount: number
   loyalty_points_redeemed: number
   loyalty_discount_amount: number
+  payment_method: PaymentMethod
+  stripe_payment_intent_id: string | null
+  payment_status: PaymentStatus
   customer_name: string
   customer_phone: string
   customer_email: string
