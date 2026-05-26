@@ -29,6 +29,35 @@ import { use } from 'react'
 // Preset tip percentages; -1 = custom input
 const TIP_PRESETS = [0, 15, 18, 20, 25] as const
 
+function getTimeInZone(tz: string): { day: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date())
+  const weekday = parts.find(p => p.type === 'weekday')?.value ?? 'Sun'
+  const rawHour = parts.find(p => p.type === 'hour')?.value ?? '0'
+  const hour = rawHour === '24' ? 0 : parseInt(rawHour, 10)
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10)
+  const DAYS: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  return { day: DAYS[weekday] ?? 0, minutes: hour * 60 + minute }
+}
+
+function timeToMins(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
+}
+
+function checkAvailability(
+  entity: { available_order_types?: string[] | null; happy_hour_enabled?: boolean; happy_hour_start?: string | null; happy_hour_end?: string | null; happy_hour_days?: number[] | null },
+  orderType: string,
+  tz: string
+): boolean {
+  if (entity.available_order_types?.length && !entity.available_order_types.includes(orderType)) return false
+  if (entity.happy_hour_enabled && entity.happy_hour_start && entity.happy_hour_end && entity.happy_hour_days?.length) {
+    const { day, minutes } = getTimeInZone(tz)
+    if (!entity.happy_hour_days.includes(day)) return false
+    if (minutes < timeToMins(entity.happy_hour_start) || minutes >= timeToMins(entity.happy_hour_end)) return false
+  }
+  return true
+}
+
 export default function RestaurantPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const supabase = createClient()
@@ -244,6 +273,20 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     }
     if (categoryId) items = items.filter(i => i.category_id === categoryId)
     if (subcategoryId) items = items.filter(i => i.subcategory_id === subcategoryId)
+    // Availability: item-level, then category-level, then subcategory-level
+    const tz = restaurant!.timezone
+    items = items.filter(i => {
+      if (!checkAvailability(i, orderType, tz)) return false
+      if (i.category_id) {
+        const cat = restaurant!.categories.find(c => c.id === i.category_id)
+        if (cat && !checkAvailability(cat, orderType, tz)) return false
+      }
+      if (i.subcategory_id) {
+        const sub = restaurant!.categories.flatMap(c => c.subcategories).find(s => s.id === i.subcategory_id)
+        if (sub && !checkAvailability(sub, orderType, tz)) return false
+      }
+      return true
+    })
     return items
   }
 
@@ -545,6 +588,30 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
       {/* ── Main content ── */}
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-32">
+        {/* Order type chips — visible when restaurant has multiple enabled types */}
+        {[restaurant.pickup_enabled, restaurant.dine_in_enabled, restaurant.delivery_enabled].filter(Boolean).length > 1 && (
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            <span className="text-xs text-gray-400 font-medium shrink-0">Ordering as:</span>
+            {restaurant.pickup_enabled && (
+              <button onClick={() => setOrderType('pickup')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${orderType === 'pickup' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                🏃 Pickup
+              </button>
+            )}
+            {restaurant.dine_in_enabled && (
+              <button onClick={() => setOrderType('dine_in')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${orderType === 'dine_in' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                🍽️ Dine In
+              </button>
+            )}
+            {restaurant.delivery_enabled && (
+              <button onClick={() => setOrderType('delivery')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${orderType === 'delivery' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                🚗 Delivery
+              </button>
+            )}
+          </div>
+        )}
         {/* Search */}
         <div className="relative mb-6">
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />

@@ -64,6 +64,102 @@ function SmallModal({ title, onClose, children, size = 'sm' }: { title: string; 
   )
 }
 
+/* ── Shared availability section (used by both item drawer and cat/sub modal) ── */
+function AvailabilitySection({
+  orderTypes, onOrderTypes,
+  happyEnabled, onHappyEnabled,
+  happyStart, onHappyStart,
+  happyEnd, onHappyEnd,
+  happyDays, onHappyDays,
+}: {
+  orderTypes: string[]
+  onOrderTypes: (v: string[]) => void
+  happyEnabled: boolean
+  onHappyEnabled: (v: boolean) => void
+  happyStart: string
+  onHappyStart: (v: string) => void
+  happyEnd: string
+  onHappyEnd: (v: string) => void
+  happyDays: number[]
+  onHappyDays: (v: number[]) => void
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <div>
+          <p className="text-xs font-semibold text-gray-500 mb-0.5">Order Type Restrictions</p>
+          <p className="text-[11px] text-gray-400">Leave all unchecked to allow any order type</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { value: 'pickup', emoji: '🏃', label: 'Pickup' },
+            { value: 'dine_in', emoji: '🍽️', label: 'Dine In' },
+            { value: 'delivery', emoji: '🚗', label: 'Delivery' },
+          ] as const).map(({ value, emoji, label }) => {
+            const sel = orderTypes.includes(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onOrderTypes(sel ? orderTypes.filter(x => x !== value) : [...orderTypes, value])}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border-2 transition ${
+                  sel ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
+              >
+                <span>{emoji}</span> {label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between py-3 px-3 bg-gray-50 rounded-xl">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Happy Hour</p>
+            <p className="text-xs text-gray-400">Only show during specific hours</p>
+          </div>
+          <Toggle checked={happyEnabled} onChange={onHappyEnabled} />
+        </div>
+        {happyEnabled && (
+          <div className="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-100 space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-gray-500 mb-1.5">Active Days</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => {
+                  const sel = happyDays.includes(i)
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => onHappyDays(sel ? happyDays.filter(d => d !== i) : [...happyDays, i])}
+                      className={`w-10 py-1 rounded-lg text-xs font-bold transition ${
+                        sel ? 'bg-amber-500 text-white' : 'bg-white text-gray-500 border border-gray-200 hover:border-amber-300'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 mb-1">Start Time</p>
+                <input type="time" className={INPUT} value={happyStart} onChange={e => onHappyStart(e.target.value)} />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 mb-1">End Time</p>
+                <input type="time" className={INPUT} value={happyEnd} onChange={e => onHappyEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 /* ── Sortable row/card components (module-level so hooks are stable) ── */
 
 function SortableCatRow({
@@ -94,6 +190,9 @@ function SortableCatRow({
         <button onClick={() => setFilterKey(cat.id)} className={`flex-1 text-left text-sm truncate font-medium ${filterKey === cat.id ? 'text-brand-600' : 'text-gray-700'}`}>
           {cat.name}
         </button>
+        {(cat.available_order_types?.length || cat.happy_hour_enabled) && (
+          <span title="Has availability restrictions" className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+        )}
         <span className="text-[10px] text-gray-400">{items.filter(i => i.category_id === cat.id).length}</span>
         <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0 transition-opacity">
           <button onClick={() => openCatModal('sub', undefined, cat.id)} className="p-0.5 text-gray-300 hover:text-brand-500" title="Add subcategory"><Plus size={11} /></button>
@@ -136,6 +235,9 @@ function SortableSubRow({
       <button onClick={() => setFilterKey(`sub:${sub.id}`)} className={`flex-1 text-left text-xs truncate ${filterKey === `sub:${sub.id}` ? 'text-brand-600 font-semibold' : 'text-gray-500'}`}>
         {sub.name}
       </button>
+      {(sub.available_order_types?.length || sub.happy_hour_enabled) && (
+        <span title="Has availability restrictions" className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+      )}
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0">
         <button onClick={() => openCatModal('sub', sub)} className="p-0.5 text-gray-300 hover:text-gray-600"><Pencil size={10} /></button>
         <button onClick={() => deleteCat(sub.id, 'sub')} className="p-0.5 text-gray-300 hover:text-red-500"><Trash2 size={10} /></button>
@@ -189,6 +291,20 @@ function SortableItemCard({
             ))}
           </div>
         )}
+        {(item.available_order_types?.length || item.happy_hour_enabled) && (
+          <div className="flex flex-wrap gap-1">
+            {!!item.available_order_types?.length && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full border border-blue-100">
+                {item.available_order_types.map(t => t === 'dine_in' ? 'Dine-in' : t.charAt(0).toUpperCase() + t.slice(1)).join(' · ')} only
+              </span>
+            )}
+            {item.happy_hour_enabled && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full border border-amber-100">
+                Happy Hour
+              </span>
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
           <span className={`text-xs font-medium ${item.is_available ? 'text-green-600' : 'text-gray-400'}`}>
             {item.is_available ? 'Available' : 'Unavailable'}
@@ -227,12 +343,24 @@ export default function MenuBuilderPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [itemForm, setItemForm] = useState({
     name: '', description: '', price: '', category_id: '', subcategory_id: '', image_url: '', is_available: true,
+    available_order_types: [] as string[],
+    happy_hour_enabled: false,
+    happy_hour_start: '16:00',
+    happy_hour_end: '18:00',
+    happy_hour_days: [] as number[],
   })
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   // Category modal
   const [catModal, setCatModal] = useState<{ type: 'cat' | 'sub'; editing?: Category | Subcategory; parentId?: string } | null>(null)
-  const [catForm, setCatForm] = useState({ name: '', description: '', is_active: true })
+  const [catForm, setCatForm] = useState({
+    name: '', description: '', is_active: true,
+    available_order_types: [] as string[],
+    happy_hour_enabled: false,
+    happy_hour_start: '16:00',
+    happy_hour_end: '18:00',
+    happy_hour_days: [] as number[],
+  })
   const [savingCat, setSavingCat] = useState(false)
 
   // Tag modal
@@ -315,14 +443,23 @@ export default function MenuBuilderPage() {
     setEditingItem(null); setImageFile(null); setImagePreview(''); setSelectedTagIds([])
     setOptionGroups([]); setDrawerTab('details'); setExpandedGroups(new Set())
     const preCat = filterKey === 'all' || filterKey.startsWith('sub:') ? '' : filterKey
-    setItemForm({ name: '', description: '', price: '', category_id: preCat, subcategory_id: '', image_url: '', is_available: true })
+    setItemForm({ name: '', description: '', price: '', category_id: preCat, subcategory_id: '', image_url: '', is_available: true, available_order_types: [], happy_hour_enabled: false, happy_hour_start: '16:00', happy_hour_end: '18:00', happy_hour_days: [] })
     setDrawerOpen(true)
   }
 
   function openEdit(item: ItemWithTags) {
     setEditingItem(item); setImageFile(null); setImagePreview(''); setSelectedTagIds((item.tags ?? []).map(t => t.id))
     setDrawerTab('details'); setExpandedGroups(new Set())
-    setItemForm({ name: item.name, description: item.description ?? '', price: String(item.price), category_id: item.category_id ?? '', subcategory_id: item.subcategory_id ?? '', image_url: item.image_url ?? '', is_available: item.is_available })
+    setItemForm({
+      name: item.name, description: item.description ?? '', price: String(item.price),
+      category_id: item.category_id ?? '', subcategory_id: item.subcategory_id ?? '',
+      image_url: item.image_url ?? '', is_available: item.is_available,
+      available_order_types: (item.available_order_types ?? []) as string[],
+      happy_hour_enabled: item.happy_hour_enabled ?? false,
+      happy_hour_start: item.happy_hour_start?.slice(0, 5) ?? '16:00',
+      happy_hour_end: item.happy_hour_end?.slice(0, 5) ?? '18:00',
+      happy_hour_days: (item.happy_hour_days ?? []) as number[],
+    })
     setOptionGroups([])
     setDrawerOpen(true)
     if (restaurantId) loadOptionGroups(item.id, restaurantId)
@@ -350,6 +487,11 @@ export default function MenuBuilderPage() {
       name: itemForm.name, description: itemForm.description || null, price: Number(itemForm.price),
       category_id: itemForm.category_id || null, subcategory_id: itemForm.subcategory_id || null,
       image_url: imageUrl || null, is_available: itemForm.is_available, restaurant_id: restaurantId,
+      available_order_types: itemForm.available_order_types.length ? itemForm.available_order_types : null,
+      happy_hour_enabled: itemForm.happy_hour_enabled,
+      happy_hour_start: itemForm.happy_hour_enabled && itemForm.happy_hour_start ? itemForm.happy_hour_start : null,
+      happy_hour_end: itemForm.happy_hour_enabled && itemForm.happy_hour_end ? itemForm.happy_hour_end : null,
+      happy_hour_days: itemForm.happy_hour_enabled && itemForm.happy_hour_days.length ? itemForm.happy_hour_days : null,
     }
 
     let itemId = editingItem?.id
@@ -398,18 +540,34 @@ export default function MenuBuilderPage() {
   /* ── category CRUD ── */
   function openCatModal(type: 'cat' | 'sub', editing?: Category | Subcategory, parentId?: string) {
     setCatModal({ type, editing, parentId })
-    setCatForm({ name: editing?.name ?? '', description: (editing && 'description' in editing ? (editing as Category).description : '') ?? '', is_active: editing?.is_active ?? true })
+    setCatForm({
+      name: editing?.name ?? '',
+      description: (editing && 'description' in editing ? (editing as Category).description : '') ?? '',
+      is_active: editing?.is_active ?? true,
+      available_order_types: (editing?.available_order_types ?? []) as string[],
+      happy_hour_enabled: editing?.happy_hour_enabled ?? false,
+      happy_hour_start: editing?.happy_hour_start?.slice(0, 5) ?? '16:00',
+      happy_hour_end: editing?.happy_hour_end?.slice(0, 5) ?? '18:00',
+      happy_hour_days: (editing?.happy_hour_days ?? []) as number[],
+    })
   }
 
   async function saveCat() {
     if (!restaurantId || !catForm.name.trim()) { toast('Name is required', 'error'); return }
     setSavingCat(true)
+    const availPayload = {
+      available_order_types: catForm.available_order_types.length ? catForm.available_order_types : null,
+      happy_hour_enabled: catForm.happy_hour_enabled,
+      happy_hour_start: catForm.happy_hour_enabled && catForm.happy_hour_start ? catForm.happy_hour_start : null,
+      happy_hour_end: catForm.happy_hour_enabled && catForm.happy_hour_end ? catForm.happy_hour_end : null,
+      happy_hour_days: catForm.happy_hour_enabled && catForm.happy_hour_days.length ? catForm.happy_hour_days : null,
+    }
     if (catModal?.type === 'cat') {
-      const p = { name: catForm.name, description: catForm.description || null, is_active: catForm.is_active, restaurant_id: restaurantId }
+      const p = { name: catForm.name, description: catForm.description || null, is_active: catForm.is_active, restaurant_id: restaurantId, ...availPayload }
       if (catModal.editing) await supabase.from('categories').update({ ...p, updated_at: new Date().toISOString() }).eq('id', catModal.editing.id)
       else await supabase.from('categories').insert({ ...p, display_order: categories.length })
     } else {
-      const p = { name: catForm.name, is_active: catForm.is_active, restaurant_id: restaurantId, category_id: catModal?.editing ? (catModal.editing as Subcategory).category_id : catModal?.parentId! }
+      const p = { name: catForm.name, is_active: catForm.is_active, restaurant_id: restaurantId, category_id: catModal?.editing ? (catModal.editing as Subcategory).category_id : catModal?.parentId!, ...availPayload }
       if (catModal?.editing) await supabase.from('subcategories').update({ ...p, updated_at: new Date().toISOString() }).eq('id', catModal.editing.id)
       else await supabase.from('subcategories').insert({ ...p, display_order: 0 })
     }
@@ -1038,6 +1196,19 @@ export default function MenuBuilderPage() {
                     </div>
                     <Toggle checked={itemForm.is_available} onChange={v => setItemForm(f => ({ ...f, is_available: v }))} />
                   </div>
+
+                  <AvailabilitySection
+                    orderTypes={itemForm.available_order_types}
+                    onOrderTypes={v => setItemForm(f => ({ ...f, available_order_types: v }))}
+                    happyEnabled={itemForm.happy_hour_enabled}
+                    onHappyEnabled={v => setItemForm(f => ({ ...f, happy_hour_enabled: v }))}
+                    happyStart={itemForm.happy_hour_start}
+                    onHappyStart={v => setItemForm(f => ({ ...f, happy_hour_start: v }))}
+                    happyEnd={itemForm.happy_hour_end}
+                    onHappyEnd={v => setItemForm(f => ({ ...f, happy_hour_end: v }))}
+                    happyDays={itemForm.happy_hour_days}
+                    onHappyDays={v => setItemForm(f => ({ ...f, happy_hour_days: v }))}
+                  />
                 </>
               ) : (
                 /* Options tab */
@@ -1119,13 +1290,28 @@ export default function MenuBuilderPage() {
 
       {/* Category / Subcategory Modal */}
       {catModal && (
-        <SmallModal title={catModal.editing ? `Edit ${catModal.type === 'cat' ? 'Category' : 'Subcategory'}` : `New ${catModal.type === 'cat' ? 'Category' : 'Subcategory'}`} onClose={() => setCatModal(null)}>
+        <SmallModal title={catModal.editing ? `Edit ${catModal.type === 'cat' ? 'Category' : 'Subcategory'}` : `New ${catModal.type === 'cat' ? 'Category' : 'Subcategory'}`} onClose={() => setCatModal(null)} size="md">
           <div className="space-y-3">
             <Field label="Name *"><input className={INPUT} value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} autoFocus /></Field>
             {catModal.type === 'cat' && <Field label="Description"><input className={INPUT} value={catForm.description} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} /></Field>}
             <div className="flex items-center gap-2">
               <input type="checkbox" id="catActive" checked={catForm.is_active} onChange={e => setCatForm(f => ({ ...f, is_active: e.target.checked }))} />
               <label htmlFor="catActive" className="text-sm text-gray-600">Active</label>
+            </div>
+            <div className="border-t border-gray-100 pt-3 space-y-3">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Availability</p>
+              <AvailabilitySection
+                orderTypes={catForm.available_order_types}
+                onOrderTypes={v => setCatForm(f => ({ ...f, available_order_types: v }))}
+                happyEnabled={catForm.happy_hour_enabled}
+                onHappyEnabled={v => setCatForm(f => ({ ...f, happy_hour_enabled: v }))}
+                happyStart={catForm.happy_hour_start}
+                onHappyStart={v => setCatForm(f => ({ ...f, happy_hour_start: v }))}
+                happyEnd={catForm.happy_hour_end}
+                onHappyEnd={v => setCatForm(f => ({ ...f, happy_hour_end: v }))}
+                happyDays={catForm.happy_hour_days}
+                onHappyDays={v => setCatForm(f => ({ ...f, happy_hour_days: v }))}
+              />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <button onClick={() => setCatModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition">Cancel</button>

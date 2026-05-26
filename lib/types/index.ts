@@ -62,6 +62,11 @@ export interface Category {
   description: string | null
   display_order: number
   is_active: boolean
+  available_order_types: ('pickup' | 'dine_in' | 'delivery')[] | null
+  happy_hour_enabled: boolean
+  happy_hour_start: string | null
+  happy_hour_end: string | null
+  happy_hour_days: number[] | null
   created_at: string
   updated_at: string
 }
@@ -77,6 +82,11 @@ export interface Subcategory {
   name: string
   display_order: number
   is_active: boolean
+  available_order_types: ('pickup' | 'dine_in' | 'delivery')[] | null
+  happy_hour_enabled: boolean
+  happy_hour_start: string | null
+  happy_hour_end: string | null
+  happy_hour_days: number[] | null
   created_at: string
   updated_at: string
 }
@@ -105,6 +115,12 @@ export interface MenuItem {
   image_url: string | null
   is_available: boolean
   display_order: number
+  // Availability restrictions (null = no restriction)
+  available_order_types: ('pickup' | 'dine_in' | 'delivery')[] | null
+  happy_hour_enabled: boolean
+  happy_hour_start: string | null  // 'HH:MM:SS'
+  happy_hour_end: string | null    // 'HH:MM:SS'
+  happy_hour_days: number[] | null // 0=Sun … 6=Sat
   created_at: string
   updated_at: string
   tags?: Tag[]
