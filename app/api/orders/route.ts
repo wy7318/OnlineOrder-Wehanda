@@ -126,8 +126,7 @@ export async function POST(request: Request) {
     const total_amount = Math.max(0, Math.round((subtotal + tax_amount + tip - loyaltyDiscountAmount) * 100) / 100)
 
     // Resolve CRM customer record
-    // Logged-in: auth_user_id is the stable identity — survives phone changes.
-    // Guest: fall back to phone upsert (unchanged behavior).
+    // Lookup priority: auth_user_id (logged-in) → normalized phone → raw phone (old records) → email → insert
     let customerId: string | null = null
     if (customer_phone) {
       const mktOptIn = marketing_opt_in !== false
@@ -136,61 +135,68 @@ export async function POST(request: Request) {
         ...(mktOptIn ? { marketing_opt_in_at: new Date().toISOString() } : {}),
       }
 
+      // Normalize phone: strip non-digits, drop leading country code 1 for 11-digit US numbers
+      const normalizedPhone = customer_phone.replace(/\D/g, '').replace(/^1(\d{10})$/, '$1')
+      const normalizedEmail = customer_email?.trim().toLowerCase() || null
+
+      // Helpers — return first match or null
+      const findByPhone = async (phone: string): Promise<{ id: string } | null> => {
+        const { data } = await supabase.from('customers').select('id')
+          .eq('restaurant_id', restaurant_id).eq('phone', phone).maybeSingle()
+        return data
+      }
+      const findByEmail = async (email: string): Promise<{ id: string } | null> => {
+        const { data } = await supabase.from('customers').select('id')
+          .eq('restaurant_id', restaurant_id).ilike('email', email).limit(1)
+        return data?.[0] ?? null
+      }
+
       if (customer_user_id) {
-        // 1. Find existing record linked to this auth user at this restaurant
-        const { data: byAuth } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('restaurant_id', restaurant_id)
-          .eq('auth_user_id', customer_user_id)
-          .maybeSingle()
+        // ── Logged-in user ─────────────────────────────────────────
+        const { data: byAuth } = await supabase.from('customers').select('id')
+          .eq('restaurant_id', restaurant_id).eq('auth_user_id', customer_user_id).maybeSingle()
 
         if (byAuth) {
-          // Update contact info in case name/phone changed in profile settings
           await supabase.from('customers')
-            .update({ name: customer_name, phone: customer_phone, email: customer_email || null, ...mktFields })
+            .update({ name: customer_name, phone: normalizedPhone, email: normalizedEmail, ...mktFields })
             .eq('id', byAuth.id)
           customerId = byAuth.id
         } else {
-          // 2. Claim an existing phone-matched guest record and link it to this auth user
-          const { data: byPhone } = await supabase
-            .from('customers')
-            .select('id')
-            .eq('restaurant_id', restaurant_id)
-            .eq('phone', customer_phone)
-            .maybeSingle()
+          // Claim an existing guest record: normalized phone → raw phone → email → create
+          let claimed: { id: string } | null = await findByPhone(normalizedPhone)
+          if (!claimed && normalizedPhone !== customer_phone) claimed = await findByPhone(customer_phone)
+          if (!claimed && normalizedEmail) claimed = await findByEmail(normalizedEmail)
 
-          if (byPhone) {
+          if (claimed) {
             await supabase.from('customers')
-              .update({ auth_user_id: customer_user_id, name: customer_name, email: customer_email || null, ...mktFields })
-              .eq('id', byPhone.id)
-            customerId = byPhone.id
+              .update({ auth_user_id: customer_user_id, name: customer_name, phone: normalizedPhone, email: normalizedEmail, ...mktFields })
+              .eq('id', claimed.id)
+            customerId = claimed.id
           } else {
-            // 3. Truly new customer — insert with auth linkage
-            const { data: newC } = await supabase
-              .from('customers')
-              .insert({
-                restaurant_id, name: customer_name, phone: customer_phone,
-                email: customer_email || null, auth_user_id: customer_user_id,
-                ...mktFields,
-              })
-              .select('id')
-              .single()
+            const { data: newC } = await supabase.from('customers')
+              .insert({ restaurant_id, name: customer_name, phone: normalizedPhone, email: normalizedEmail, auth_user_id: customer_user_id, ...mktFields })
+              .select('id').single()
             customerId = newC?.id ?? null
           }
         }
       } else {
-        // Guest order — upsert by phone (no auth user)
-        const customerData: Record<string, unknown> = {
-          restaurant_id, name: customer_name, phone: customer_phone,
-          email: customer_email || null, ...mktFields,
+        // ── Guest order ─────────────────────────────────────────────
+        // Lookup: normalized phone → raw phone (backward compat) → email → insert
+        let existing: { id: string } | null = await findByPhone(normalizedPhone)
+        if (!existing && normalizedPhone !== customer_phone) existing = await findByPhone(customer_phone)
+        if (!existing && normalizedEmail) existing = await findByEmail(normalizedEmail)
+
+        if (existing) {
+          await supabase.from('customers')
+            .update({ name: customer_name, phone: normalizedPhone, email: normalizedEmail, ...mktFields })
+            .eq('id', existing.id)
+          customerId = existing.id
+        } else {
+          const { data: newC } = await supabase.from('customers')
+            .insert({ restaurant_id, name: customer_name, phone: normalizedPhone, email: normalizedEmail, ...mktFields })
+            .select('id').single()
+          customerId = newC?.id ?? null
         }
-        const { data: guest } = await supabase
-          .from('customers')
-          .upsert(customerData, { onConflict: 'restaurant_id,phone' })
-          .select('id')
-          .single()
-        customerId = guest?.id ?? null
       }
     }
 
