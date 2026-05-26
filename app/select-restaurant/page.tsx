@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ShoppingBag, LogOut, ArrowRight, MapPin, Store } from 'lucide-react'
 
+type LicenseStatus = 'trial' | 'active' | 'suspended' | 'cancelled'
+
 interface Restaurant {
   id: string
   name: string
@@ -14,6 +16,8 @@ interface Restaurant {
   logo_url: string | null
   address: string | null
   created_at: string
+  license_status: LicenseStatus
+  trial_ends_at: string | null
 }
 
 export default function SelectRestaurantPage() {
@@ -107,50 +111,69 @@ export default function SelectRestaurantPage() {
         {/* Restaurant cards */}
         {restaurants.length > 0 && (
           <div className="grid sm:grid-cols-2 gap-4 mb-5">
-            {restaurants.map(r => (
-              <button
-                key={r.id}
-                onClick={() => handleSelect(r.id)}
-                disabled={selecting !== null}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:border-brand-300 hover:shadow-md transition-all group disabled:opacity-60 disabled:cursor-wait"
-              >
-                {/* Card header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-11 h-11 bg-brand-50 rounded-xl flex items-center justify-center shrink-0">
-                    {r.logo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.logo_url} alt={r.name} className="w-11 h-11 rounded-xl object-cover" />
+            {restaurants.map(r => {
+              const trialExpired = r.license_status === 'trial' && !!r.trial_ends_at && new Date(r.trial_ends_at) < new Date()
+              const isBlocked = r.license_status === 'suspended' || r.license_status === 'cancelled' || trialExpired
+              const statusBadge: Record<LicenseStatus, { label: string; cls: string }> = {
+                active:    { label: 'Active',    cls: 'bg-green-100 text-green-700' },
+                trial:     { label: 'Trial',     cls: 'bg-purple-100 text-purple-700' },
+                suspended: { label: 'Suspended', cls: 'bg-amber-100 text-amber-700' },
+                cancelled: { label: 'Cancelled', cls: 'bg-red-100 text-red-600' },
+              }
+              const badge = r.is_active ? statusBadge[r.license_status] : { label: 'Inactive', cls: 'bg-gray-100 text-gray-400' }
+
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => !isBlocked && handleSelect(r.id)}
+                  disabled={selecting !== null || isBlocked}
+                  className={`bg-white rounded-2xl border shadow-sm p-5 text-left transition-all group ${
+                    isBlocked
+                      ? 'border-gray-100 opacity-60 cursor-not-allowed'
+                      : 'border-gray-100 hover:border-brand-300 hover:shadow-md disabled:opacity-60 disabled:cursor-wait'
+                  }`}
+                >
+                  {/* Card header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-11 h-11 bg-brand-50 rounded-xl flex items-center justify-center shrink-0">
+                      {r.logo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={r.logo_url} alt={r.name} className="w-11 h-11 rounded-xl object-cover" />
+                      ) : (
+                        <ShoppingBag size={20} className="text-brand-500" />
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+
+                  {/* Name + address */}
+                  <h3 className="font-bold text-gray-900 text-base mb-1">{r.name}</h3>
+                  {r.address && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                      <MapPin size={10} className="shrink-0" />
+                      <span className="truncate">{r.address}</span>
+                    </p>
+                  )}
+                  <p className="text-[11px] text-gray-300 truncate">/restaurant/{r.slug}</p>
+
+                  {/* CTA */}
+                  <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+                    {isBlocked ? (
+                      <span className="text-sm font-semibold text-gray-400">Contact support</span>
                     ) : (
-                      <ShoppingBag size={20} className="text-brand-500" />
+                      <>
+                        <span className="text-sm font-semibold text-brand-500 group-hover:text-brand-600 transition">
+                          {selecting === r.id ? 'Opening…' : 'Open Dashboard'}
+                        </span>
+                        <ArrowRight size={16} className="text-brand-400 group-hover:translate-x-1 transition-transform" />
+                      </>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                    {r.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-
-                {/* Name + address */}
-                <h3 className="font-bold text-gray-900 text-base mb-1">{r.name}</h3>
-                {r.address && (
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
-                    <MapPin size={10} className="shrink-0" />
-                    <span className="truncate">{r.address}</span>
-                  </p>
-                )}
-                <p className="text-[11px] text-gray-300 truncate">/restaurant/{r.slug}</p>
-
-                {/* CTA */}
-                <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-brand-500 group-hover:text-brand-600 transition">
-                    {selecting === r.id ? 'Opening…' : 'Open Dashboard'}
-                  </span>
-                  <ArrowRight
-                    size={16}
-                    className="text-brand-400 group-hover:translate-x-1 transition-transform"
-                  />
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         )}
 

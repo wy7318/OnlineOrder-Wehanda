@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET() {
   const supabase = await createClient()
@@ -10,6 +11,8 @@ export async function GET() {
   const cookieStore = await cookies()
   const selectedId = cookieStore.get('selected_restaurant_id')?.value
 
+  let restaurant = null
+
   if (selectedId) {
     const { data } = await supabase
       .from('restaurants')
@@ -17,17 +20,29 @@ export async function GET() {
       .eq('id', selectedId)
       .eq('owner_user_id', user.id)
       .single()
-    if (data) return NextResponse.json(data)
+    restaurant = data ?? null
   }
 
-  // Fallback: first restaurant owned by user
-  const { data } = await supabase
-    .from('restaurants')
-    .select('*')
-    .eq('owner_user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+  if (!restaurant) {
+    const { data } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('owner_user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+    restaurant = data ?? null
+  }
 
-  return NextResponse.json(data ?? null)
+  if (!restaurant) return NextResponse.json(null)
+
+  // Fetch license using admin client (restaurant owners have no direct RLS access)
+  const adminSupabase = createAdminClient()
+  const { data: license } = await adminSupabase
+    .from('restaurant_licenses')
+    .select('*')
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+
+  return NextResponse.json({ ...restaurant, restaurant_licenses: license ?? null })
 }

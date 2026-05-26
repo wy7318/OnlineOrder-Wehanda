@@ -11,28 +11,46 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/helpers'
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> }
+type LicenseFeatures = {
+  feature_menu: boolean
+  feature_orders: boolean
+  feature_reservations: boolean
+  feature_customers: boolean
+  feature_analytics: boolean
+}
+
+type NavItem = {
+  href: string
+  label: string
+  icon: React.ComponentType<{ size?: number }>
+  feature?: keyof LicenseFeatures
+}
 
 const nav: NavItem[] = [
   { href: '/dashboard',     label: 'Dashboard',       icon: LayoutDashboard },
-  { href: '/menu',          label: 'Menu',             icon: UtensilsCrossed },
-  { href: '/orders',        label: 'Orders',           icon: ClipboardList },
-  { href: '/reservations',  label: 'Reservations',     icon: CalendarDays },
-  { href: '/customers',     label: 'Customers',        icon: Users },
-  { href: '/analytics',     label: 'Analytics',        icon: BarChart2 },
+  { href: '/menu',          label: 'Menu',             icon: UtensilsCrossed,  feature: 'feature_menu' },
+  { href: '/orders',        label: 'Orders',           icon: ClipboardList,    feature: 'feature_orders' },
+  { href: '/reservations',  label: 'Reservations',     icon: CalendarDays,     feature: 'feature_reservations' },
+  { href: '/customers',     label: 'Customers',        icon: Users,            feature: 'feature_customers' },
+  { href: '/analytics',     label: 'Analytics',        icon: BarChart2,        feature: 'feature_analytics' },
   { href: '/setup',         label: 'Restaurant Setup', icon: Settings },
 ]
 
 function NavLinks({
-  pathname, isAdmin, onNavigate,
+  pathname, isAdmin, license, onNavigate,
 }: {
   pathname: string
   isAdmin: boolean
+  license: LicenseFeatures | null
   onNavigate?: () => void
 }) {
+  const visibleNav = nav.filter(item =>
+    !item.feature || !license || license[item.feature]
+  )
+
   return (
     <>
-      {nav.map(item => (
+      {visibleNav.map(item => (
         <Link
           key={item.href}
           href={item.href}
@@ -72,12 +90,16 @@ export default function Sidebar() {
   const router = useRouter()
   const [restaurantName, setRestaurantName] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [license, setLicense] = useState<LicenseFeatures | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/restaurant/current')
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.name) setRestaurantName(data.name) })
+      .then(data => {
+        if (data?.name) setRestaurantName(data.name)
+        if (data?.restaurant_licenses) setLicense(data.restaurant_licenses)
+      })
       .catch(() => {})
     fetch('/api/admin/check')
       .then(r => r.ok ? r.json() : null)
@@ -141,7 +163,7 @@ export default function Sidebar() {
         </Link>
 
         <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
-          <NavLinks pathname={pathname} isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
+          <NavLinks pathname={pathname} isAdmin={isAdmin} license={license} onNavigate={() => setMobileOpen(false)} />
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-800 space-y-0.5 shrink-0">
@@ -186,7 +208,7 @@ export default function Sidebar() {
         </Link>
 
         <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
-          <NavLinks pathname={pathname} isAdmin={isAdmin} />
+          <NavLinks pathname={pathname} isAdmin={isAdmin} license={license} />
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-800 space-y-0.5 shrink-0">

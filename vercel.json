@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/compute-upsell",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/trial-expiry-warning",
+      "schedule": "0 9 * * *"
     }
   ]
 }

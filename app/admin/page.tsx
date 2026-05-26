@@ -6,7 +6,7 @@ import {
   ShoppingBag, Users, Store, Plus, RefreshCw, LogOut,
   ChevronRight, ToggleLeft, ToggleRight, Trash2, UserPlus,
   Building2, CheckCircle2, XCircle, ExternalLink, CreditCard,
-  FlaskConical, Globe,
+  FlaskConical, Globe, KeyRound,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -30,7 +30,23 @@ interface User {
   restaurants: { id: string; name: string }[]
 }
 
-type Tab = 'restaurants' | 'users' | 'payments'
+type Tab = 'restaurants' | 'users' | 'payments' | 'licenses'
+
+type LicenseStatus = 'trial' | 'active' | 'suspended' | 'cancelled'
+
+interface LicenseRow {
+  restaurant_id: string
+  status: LicenseStatus
+  feature_menu: boolean
+  feature_orders: boolean
+  feature_reservations: boolean
+  feature_customers: boolean
+  feature_analytics: boolean
+  trial_ends_at: string | null
+  notes: string | null
+  updated_at: string
+  restaurants: { id: string; name: string; slug: string; owner_user_id: string } | null
+}
 
 interface PaymentRow {
   id: string
@@ -52,9 +68,24 @@ export default function AdminPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([])
+  const [licenseRows, setLicenseRows] = useState<LicenseRow[]>([])
   const [loading, setLoading] = useState(true)
   const [adminEmail, setAdminEmail] = useState('')
   const [togglingModeId, setTogglingModeId] = useState<string | null>(null)
+
+  // License management modal
+  const [managingLicense, setManagingLicense] = useState<LicenseRow | null>(null)
+  const [licenseForm, setLicenseForm] = useState<{
+    status: LicenseStatus
+    feature_menu: boolean
+    feature_orders: boolean
+    feature_reservations: boolean
+    feature_customers: boolean
+    feature_analytics: boolean
+    trial_ends_at: string  // 'YYYY-MM-DD' for date input, '' if none
+    notes: string
+  } | null>(null)
+  const [licenseSubmitting, setLicenseSubmitting] = useState(false)
 
   // Modals
   const [showCreateRestaurant, setShowCreateRestaurant] = useState(false)
@@ -84,14 +115,16 @@ export default function AdminPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [rRes, uRes, pRes] = await Promise.all([
+    const [rRes, uRes, pRes, lRes] = await Promise.all([
       fetch('/api/admin/restaurants'),
       fetch('/api/admin/users'),
       fetch('/api/admin/stripe/restaurants'),
+      fetch('/api/admin/licenses'),
     ])
     if (rRes.ok) setRestaurants(await rRes.json())
     if (uRes.ok) setUsers(await uRes.json())
     if (pRes.ok) setPaymentRows(await pRes.json())
+    if (lRes.ok) setLicenseRows(await lRes.json())
     setLoading(false)
   }, [])
 
@@ -194,6 +227,59 @@ export default function AdminPage() {
     loadData()
   }
 
+  function openManageLicense(row: LicenseRow) {
+    setManagingLicense(row)
+    setLicenseForm({
+      status: row.status,
+      feature_menu: row.feature_menu,
+      feature_orders: row.feature_orders,
+      feature_reservations: row.feature_reservations,
+      feature_customers: row.feature_customers,
+      feature_analytics: row.feature_analytics,
+      trial_ends_at: row.trial_ends_at
+        ? new Date(row.trial_ends_at).toISOString().slice(0, 10)
+        : '',
+      notes: row.notes ?? '',
+    })
+  }
+
+  async function handleSaveLicense(e: React.FormEvent) {
+    e.preventDefault()
+    if (!managingLicense || !licenseForm) return
+    setLicenseSubmitting(true)
+
+    // Convert date input to end-of-day UTC ISO string, or null if not trial / not set
+    const trialEndsAt = licenseForm.status === 'trial' && licenseForm.trial_ends_at
+      ? new Date(licenseForm.trial_ends_at + 'T23:59:59Z').toISOString()
+      : null
+
+    const res = await fetch(`/api/admin/licenses/${managingLicense.restaurant_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: licenseForm.status,
+        feature_menu: licenseForm.feature_menu,
+        feature_orders: licenseForm.feature_orders,
+        feature_reservations: licenseForm.feature_reservations,
+        feature_customers: licenseForm.feature_customers,
+        feature_analytics: licenseForm.feature_analytics,
+        trial_ends_at: trialEndsAt,
+        notes: licenseForm.notes || null,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setLicenseRows(prev => prev.map(r =>
+        r.restaurant_id === managingLicense.restaurant_id
+          ? { ...r, ...updated }
+          : r
+      ))
+      setManagingLicense(null)
+      setLicenseForm(null)
+    }
+    setLicenseSubmitting(false)
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -261,6 +347,7 @@ export default function AdminPage() {
             { id: 'restaurants', label: 'Restaurants', icon: Store },
             { id: 'users', label: 'Users', icon: Users },
             { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'licenses', label: 'Licenses', icon: KeyRound },
           ] as { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[]).map(t => (
             <button
               key={t.id}
@@ -291,12 +378,14 @@ export default function AdminPage() {
           />
         ) : tab === 'users' ? (
           <UsersTable users={users} />
-        ) : (
+        ) : tab === 'payments' ? (
           <PaymentsTable
             rows={paymentRows}
             togglingModeId={togglingModeId}
             onToggleMode={handleToggleStripeMode}
           />
+        ) : (
+          <LicensesTable rows={licenseRows} onManage={openManageLicense} />
         )}
       </div>
 
@@ -403,6 +492,91 @@ export default function AdminPage() {
               <button type="button" onClick={() => { setShowChangeOwner(null); setCoOwner('') }} className="btn-secondary">Cancel</button>
               <button type="submit" disabled={coSubmitting} className="btn-primary">
                 {coSubmitting ? 'Saving…' : 'Save Owner'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Manage License Modal */}
+      {managingLicense && licenseForm && (
+        <Modal
+          title={`License — ${managingLicense.restaurants?.name ?? managingLicense.restaurant_id}`}
+          onClose={() => { setManagingLicense(null); setLicenseForm(null) }}
+        >
+          <form onSubmit={handleSaveLicense} className="space-y-5">
+            <Field label="Status" required>
+              <select
+                className="input"
+                value={licenseForm.status}
+                onChange={e => setLicenseForm(f => f ? { ...f, status: e.target.value as LicenseStatus } : f)}
+              >
+                <option value="trial">Trial</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              {(licenseForm.status === 'suspended' || licenseForm.status === 'cancelled') && (
+                <p className="text-xs text-red-500 mt-1">Restaurant owners will be blocked from the dashboard.</p>
+              )}
+            </Field>
+
+            {licenseForm.status === 'trial' && (
+              <Field label="Trial Ends On" required>
+                <input
+                  type="date"
+                  className="input"
+                  value={licenseForm.trial_ends_at}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setLicenseForm(f => f ? { ...f, trial_ends_at: e.target.value } : f)}
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Access is automatically blocked after this date.
+                </p>
+              </Field>
+            )}
+            <div>
+              <p className="text-xs font-semibold text-gray-600 mb-2">Feature Access</p>
+              <div className="space-y-2">
+                {([
+                  { key: 'feature_menu',         label: 'Menu Builder' },
+                  { key: 'feature_orders',        label: 'Orders' },
+                  { key: 'feature_reservations',  label: 'Reservations' },
+                  { key: 'feature_customers',     label: 'Customers & CRM' },
+                  { key: 'feature_analytics',     label: 'Analytics' },
+                ] as { key: keyof typeof licenseForm; label: string }[]).map(f => (
+                  <label key={f.key} className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={licenseForm[f.key] as boolean}
+                      onChange={e => setLicenseForm(prev => prev ? { ...prev, [f.key]: e.target.checked } : prev)}
+                      className="w-4 h-4 rounded accent-orange-500"
+                    />
+                    <span className="text-sm text-gray-700">{f.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Field label="Internal Notes">
+              <textarea
+                className="input resize-none"
+                rows={3}
+                placeholder="Optional notes visible only to admins…"
+                value={licenseForm.notes}
+                onChange={e => setLicenseForm(f => f ? { ...f, notes: e.target.value } : f)}
+              />
+            </Field>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => { setManagingLicense(null); setLicenseForm(null) }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={licenseSubmitting} className="btn-primary">
+                {licenseSubmitting ? 'Saving…' : 'Save License'}
               </button>
             </div>
           </form>
@@ -717,6 +891,100 @@ function PaymentsTable({
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  )
+}
+
+const LICENSE_STATUS_STYLES: Record<string, string> = {
+  trial:     'bg-purple-50 text-purple-700',
+  active:    'bg-green-50 text-green-700',
+  suspended: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-red-50 text-red-600',
+}
+
+function LicensesTable({ rows, onManage }: { rows: LicenseRow[]; onManage: (r: LicenseRow) => void }) {
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 text-center text-gray-400">
+        <KeyRound size={32} className="mx-auto mb-3 opacity-30" />
+        <p>No licenses found.</p>
+      </div>
+    )
+  }
+
+  const features: { key: keyof LicenseRow; label: string }[] = [
+    { key: 'feature_menu',         label: 'Menu' },
+    { key: 'feature_orders',       label: 'Orders' },
+    { key: 'feature_reservations', label: 'Reservations' },
+    { key: 'feature_customers',    label: 'Customers' },
+    { key: 'feature_analytics',    label: 'Analytics' },
+  ]
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              {['Restaurant', 'Status', 'Features', 'Last Updated', 'Actions'].map(h => (
+                <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {rows.map(r => (
+              <tr key={r.restaurant_id} className="hover:bg-gray-50 transition">
+                <td className="px-5 py-4">
+                  <div className="font-semibold text-gray-900">{r.restaurants?.name ?? '—'}</div>
+                  {r.restaurants?.slug && (
+                    <div className="text-xs text-gray-400 font-mono">/restaurant/{r.restaurants.slug}</div>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  {(() => {
+                    const trialExpired = r.status === 'trial' && r.trial_ends_at && new Date(r.trial_ends_at) < new Date()
+                    return (
+                      <div>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${
+                          trialExpired ? 'bg-red-50 text-red-600' : (LICENSE_STATUS_STYLES[r.status] ?? 'bg-gray-100 text-gray-500')
+                        }`}>
+                          {trialExpired ? 'Trial Expired' : r.status}
+                        </span>
+                        {r.status === 'trial' && r.trial_ends_at && (
+                          <p className={`text-xs mt-1 ${trialExpired ? 'text-red-400' : 'text-gray-400'}`}>
+                            {trialExpired ? 'Ended' : 'Ends'}{' '}
+                            {new Date(r.trial_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-wrap gap-1">
+                    {features.map(f => (
+                      r[f.key]
+                        ? <span key={f.key} className="text-[11px] bg-brand-50 text-brand-600 font-medium px-2 py-0.5 rounded-full">{f.label}</span>
+                        : <span key={f.key} className="text-[11px] bg-gray-100 text-gray-400 font-medium px-2 py-0.5 rounded-full line-through">{f.label}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-5 py-4 text-xs text-gray-400">
+                  {new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </td>
+                <td className="px-5 py-4">
+                  <button
+                    onClick={() => onManage(r)}
+                    className="flex items-center gap-1 text-xs font-semibold text-brand-500 hover:text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg transition"
+                  >
+                    <KeyRound size={12} /> Manage
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

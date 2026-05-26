@@ -361,6 +361,23 @@ export interface LoyaltyTransaction {
   created_at: string
 }
 
+// ── Restaurant License ────────────────────────────────────────
+export type LicenseStatus = 'trial' | 'active' | 'suspended' | 'cancelled'
+
+export interface RestaurantLicense {
+  restaurant_id: string
+  status: LicenseStatus
+  feature_menu: boolean
+  feature_orders: boolean
+  feature_reservations: boolean
+  feature_customers: boolean
+  feature_analytics: boolean
+  trial_ends_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ── Order ─────────────────────────────────────────────────────
 export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled'
 export type OrderType = 'pickup' | 'dine_in' | 'delivery'
