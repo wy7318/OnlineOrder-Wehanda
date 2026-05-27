@@ -303,8 +303,55 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* ── Mobile: card list ───────────────────────────────── */}
+      {loading ? (
+        <div className="lg:hidden bg-white rounded-2xl border border-gray-100 shadow-sm py-16 flex justify-center">
+          <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : customers.length === 0 ? (
+        <div className="lg:hidden bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center text-gray-400">
+          <Users size={40} className="mx-auto mb-3 text-gray-300" />
+          <p className="font-medium">No customers found</p>
+          <p className="text-sm mt-1">Customers appear here after placing their first order</p>
+        </div>
+      ) : (
+        <div className="lg:hidden space-y-2">
+          {customers.map(c => (
+            <Link
+              key={c.id}
+              href={`/customers/${c.id}`}
+              className={cn(
+                'flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 active:bg-gray-50 transition-colors',
+                c.is_blocked && 'opacity-60',
+              )}
+            >
+              <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-600 text-sm font-bold flex items-center justify-center shrink-0 relative">
+                {initials(c)}
+                {c.is_blocked && (
+                  <Ban size={10} className="absolute -bottom-0.5 -right-0.5 text-red-400 bg-white rounded-full" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{displayName(c)}</p>
+                  <p className="text-sm font-bold text-gray-900 shrink-0">{formatCurrency(c.lifetime_value)}</p>
+                </div>
+                <p className="text-xs text-gray-400 truncate mb-0.5">{c.email || c.phone || '—'}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span>{c.total_orders} order{c.total_orders !== 1 ? 's' : ''}</span>
+                  {c.last_order_at && (
+                    <span>· {new Date(c.last_order_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                  {c.marketing_opt_in && <MailCheck size={11} className="text-green-500 ml-auto" />}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* ── Desktop: table ───────────────────────────────── */}
+      <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-16 flex justify-center">
             <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />

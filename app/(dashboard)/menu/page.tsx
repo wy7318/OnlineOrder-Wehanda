@@ -11,7 +11,7 @@ import {
   Download, Upload, FileDown, GripVertical,
 } from 'lucide-react'
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
 import {
@@ -316,6 +316,50 @@ function SortableItemCard({
   )
 }
 
+function SortableMobileItemRow({
+  item, openEdit, quickToggle,
+}: {
+  item: ItemWithTags
+  openEdit: (item: ItemWithTags) => void
+  quickToggle: (item: ItemWithTags) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 transition-colors"
+    >
+      <div className="w-14 h-14 rounded-xl bg-gray-100 shrink-0 overflow-hidden relative">
+        {item.image_url
+          ? <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+          : <div className="flex items-center justify-center h-full text-gray-300"><ImageIcon size={18} /></div>
+        }
+      </div>
+      <button onClick={() => openEdit(item)} className="flex-1 min-w-0 text-left">
+        <p className={`text-sm font-semibold truncate leading-tight ${!item.is_available ? 'text-gray-400' : 'text-gray-900'}`}>{item.name}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-sm font-bold text-brand-500">{formatCurrency(item.price)}</span>
+          {item.tags.slice(0, 2).map(t => (
+            <span key={t.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: t.color + '20', color: t.color }}>{t.name}</span>
+          ))}
+        </div>
+        {(item.available_order_types?.length || item.happy_hour_enabled) && (
+          <p className="text-[10px] text-amber-600 mt-0.5 font-medium">Has availability restrictions</p>
+        )}
+      </button>
+      <Toggle checked={item.is_available} onChange={() => quickToggle(item)} />
+      <span
+        {...attributes}
+        {...listeners}
+        className="text-gray-300 shrink-0 p-1 cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical size={18} />
+      </span>
+    </div>
+  )
+}
+
 export default function MenuBuilderPage() {
   const { toast } = useToast()
   const supabase = createClient()
@@ -330,7 +374,13 @@ export default function MenuBuilderPage() {
   // Ordering
   const [dirtyOrder, setDirtyOrder] = useState(false)
   const [savingOrder, setSavingOrder] = useState(false)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
+
+  // Mobile category management sheet
+  const [mobileCatSheetOpen, setMobileCatSheetOpen] = useState(false)
 
   // Drawer
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -928,10 +978,54 @@ export default function MenuBuilderPage() {
 
   /* ── render ── */
   return (
-    <div className="flex -mx-8 -my-8" style={{ height: '100vh' }}>
+    <div className="flex flex-col -mx-4 lg:flex-row lg:-mx-8 lg:-my-8 lg:h-screen">
 
-      {/* Left: Category Panel */}
-      <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
+      {/* ── Mobile: horizontal category pill strip ───────────────── */}
+      <div className="lg:hidden overflow-x-auto border-b border-gray-100 bg-white shrink-0">
+        <div className="flex items-center gap-1.5 px-4 py-2.5" style={{ width: 'max-content', minWidth: '100%' }}>
+          {/* All pill */}
+          <button
+            onClick={() => setFilterKey('all')}
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition whitespace-nowrap ${filterKey === 'all' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+          >
+            All{items.length > 0 ? ` (${items.length})` : ''}
+          </button>
+
+          {categories.flatMap(cat => {
+            const count = items.filter(i => i.category_id === cat.id).length
+            const catActive = filterKey === cat.id
+            return [
+              /* ── Category separator + pill ── */
+              <div key={cat.id} className="flex items-center gap-1 shrink-0">
+                <span className="w-px h-5 bg-gray-200 shrink-0" />
+                <button
+                  onClick={() => setFilterKey(cat.id)}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold transition whitespace-nowrap ${catActive ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+                >
+                  {cat.name}{count > 0 ? ` (${count})` : ''}
+                </button>
+              </div>,
+              /* ── Subcategory pills — visually nested ── */
+              ...cat.subcategories.map(sub => {
+                const subActive = filterKey === `sub:${sub.id}`
+                return (
+                  <button
+                    key={`sub:${sub.id}`}
+                    onClick={() => setFilterKey(`sub:${sub.id}`)}
+                    className={`shrink-0 flex items-center gap-1 pl-2 pr-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap border ${subActive ? 'bg-brand-100 text-brand-700 border-brand-300' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+                  >
+                    <span className={`text-[10px] ${subActive ? 'text-brand-400' : 'text-gray-300'}`}>↳</span>
+                    {sub.name}
+                  </button>
+                )
+              }),
+            ]
+          })}
+        </div>
+      </div>
+
+      {/* ── Desktop: Left Category Panel ──────────────────────────── */}
+      <div className="hidden lg:flex w-56 shrink-0 bg-white border-r border-gray-100 flex-col overflow-hidden">
         <div className="px-4 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Menu Builder</h2>
         </div>
@@ -976,15 +1070,17 @@ export default function MenuBuilderPage() {
         </div>
       </div>
 
-      {/* Right: Item Grid */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
-        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shrink-0 gap-3 flex-wrap">
+      {/* ── Right: Item content area ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col lg:overflow-hidden bg-gray-50">
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 lg:px-6 py-3 lg:py-4 bg-white border-b border-gray-100 shrink-0 gap-3">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">{filterLabel}</h1>
-            <p className="text-sm text-gray-400">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-base lg:text-lg font-bold text-gray-900">{filterLabel}</h1>
+            <p className="text-xs lg:text-sm text-gray-400">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Download template */}
+          {/* Desktop: full toolbar */}
+          <div className="hidden lg:flex items-center gap-2 flex-wrap">
             <button
               onClick={downloadTemplate}
               title="Download CSV template"
@@ -992,8 +1088,6 @@ export default function MenuBuilderPage() {
             >
               <FileDown size={14} /> Template
             </button>
-
-            {/* Import CSV */}
             <label
               title="Import items from CSV"
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border rounded-xl transition cursor-pointer ${
@@ -1004,36 +1098,37 @@ export default function MenuBuilderPage() {
             >
               <Upload size={14} />
               {importing ? 'Importing…' : 'Import'}
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                disabled={importing}
-                onChange={handleImport}
-              />
+              <input type="file" accept=".csv" className="hidden" disabled={importing} onChange={handleImport} />
             </label>
-
-            {/* Export CSV */}
-            <button
-              onClick={exportMenu}
-              disabled={items.length === 0}
-              title="Export menu to CSV"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-500 hover:border-brand-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <button onClick={exportMenu} disabled={items.length === 0} title="Export menu to CSV" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-500 hover:border-brand-300 transition disabled:opacity-40 disabled:cursor-not-allowed">
               <Download size={14} /> Export
             </button>
-
             <div className="w-px h-6 bg-gray-200" />
             <button onClick={openNew} className={BTN_PRIMARY}><Plus size={14} /> New Item</button>
+          </div>
+          {/* Mobile: categories sheet + tags */}
+          <div className="flex lg:hidden items-center gap-2">
+            <button
+              onClick={() => setMobileCatSheetOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl active:bg-gray-50 transition"
+            >
+              <UtensilsCrossed size={14} /> Categories
+            </button>
+            <button onClick={() => setTagModal(true)} className="p-2 text-gray-500 border border-gray-200 rounded-xl active:bg-gray-50 transition">
+              <Tag size={16} />
+            </button>
           </div>
         </div>
 
         {/* Save Order banner */}
         {dirtyOrder && (
-          <div className="flex items-center justify-between px-6 py-2.5 bg-amber-50 border-b border-amber-100 shrink-0">
+          <div className="flex items-center justify-between px-4 lg:px-6 py-2.5 bg-amber-50 border-b border-amber-100 shrink-0">
             <div className="flex items-center gap-2 text-amber-700">
               <GripVertical size={14} />
-              <span className="text-sm font-medium">Order changed — save to apply on customer portal</span>
+              <span className="text-sm font-medium">
+                <span className="hidden lg:inline">Order changed — save to apply on customer portal</span>
+                <span className="lg:hidden">Order changed</span>
+              </span>
             </div>
             <div className="flex gap-2">
               <button
@@ -1054,42 +1149,80 @@ export default function MenuBuilderPage() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-              <UtensilsCrossed size={36} className="mb-3 opacity-30" />
-              <p className="text-sm font-medium text-gray-500 mb-1">No items here yet</p>
-              <button onClick={openNew} className={BTN_PRIMARY + ' mt-3'}><Plus size={14} /> Add First Item</button>
-            </div>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
-              <SortableContext items={filteredItems.map(i => i.id)} strategy={rectSortingStrategy}>
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {/* Item content */}
+        <div className="flex-1 lg:overflow-y-auto p-4 lg:p-6">
+
+          {/* Mobile: sortable list with touch drag */}
+          <div className="lg:hidden space-y-2 pb-4">
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <UtensilsCrossed size={36} className="mb-3 opacity-30" />
+                <p className="text-sm font-medium text-gray-500">No items here yet</p>
+              </div>
+            ) : (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+                <SortableContext items={filteredItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   {filteredItems.map(item => (
-                    <SortableItemCard
-                      key={item.id}
-                      item={item}
-                      openEdit={openEdit}
-                      deleteItem={deleteItem}
-                      quickToggle={quickToggle}
-                    />
+                    <SortableMobileItemRow key={item.id} item={item} openEdit={openEdit} quickToggle={quickToggle} />
                   ))}
-                  <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-brand-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-500 transition group">
-                    <Plus size={24} className="group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-medium">Add Item</span>
-                  </button>
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+
+          {/* Desktop: DnD card grid */}
+          <div className="hidden lg:block">
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+                <UtensilsCrossed size={36} className="mb-3 opacity-30" />
+                <p className="text-sm font-medium text-gray-500 mb-1">No items here yet</p>
+                <button onClick={openNew} className={BTN_PRIMARY + ' mt-3'}><Plus size={14} /> Add First Item</button>
+              </div>
+            ) : (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+                <SortableContext items={filteredItems.map(i => i.id)} strategy={rectSortingStrategy}>
+                  <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredItems.map(item => (
+                      <SortableItemCard
+                        key={item.id}
+                        item={item}
+                        openEdit={openEdit}
+                        deleteItem={deleteItem}
+                        quickToggle={quickToggle}
+                      />
+                    ))}
+                    <button onClick={openNew} className="min-h-[220px] border-2 border-dashed border-gray-200 hover:border-brand-300 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-500 transition group">
+                      <Plus size={24} className="group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">Add Item</span>
+                    </button>
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Item Drawer */}
+      {/* ── Mobile FAB — add new item ─────────────────────────────── */}
+      <button
+        onClick={openNew}
+        className="lg:hidden fixed right-4 z-40 w-14 h-14 bg-brand-500 rounded-full shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}
+      >
+        <Plus size={24} className="text-white" />
+      </button>
+
+      {/* ── Item Drawer — bottom sheet on mobile, right panel on desktop ── */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 flex justify-end">
+        <div className="fixed inset-0 z-40 flex flex-col justify-end lg:flex-row lg:justify-end">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={closeDrawer} />
-          <div className="relative w-full max-w-lg bg-white shadow-2xl flex flex-col z-10">
+          <div className="relative w-full lg:max-w-lg bg-white shadow-2xl flex flex-col z-10 max-h-[92vh] lg:max-h-none rounded-t-3xl lg:rounded-none animate-slide-up lg:[animation:none]">
+
+            {/* Mobile drag handle */}
+            <div className="flex justify-center pt-3 pb-1 lg:hidden shrink-0">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div>
@@ -1270,7 +1403,10 @@ export default function MenuBuilderPage() {
 
             {/* Footer */}
             {drawerTab === 'details' && (
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-white">
+              <div
+                className="px-6 border-t border-gray-100 flex items-center gap-3 shrink-0 bg-white"
+                style={{ paddingTop: '1rem', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)' }}
+              >
                 {editingItem && (
                   <button onClick={() => deleteItem(editingItem.id)} className="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
                     <Trash2 size={14} /> Delete
@@ -1286,6 +1422,70 @@ export default function MenuBuilderPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Mobile: Categories management bottom sheet ───────────── */}
+      {mobileCatSheetOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px]"
+            onClick={() => setMobileCatSheetOpen(false)}
+          />
+          <div
+            className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-3xl shadow-2xl animate-slide-up flex flex-col"
+            style={{ maxHeight: '80vh', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          >
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <h3 className="font-bold text-gray-900">Categories</h3>
+              <button onClick={() => setMobileCatSheetOpen(false)} className={BTN_GHOST}><X size={18} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-2 px-3">
+              <button
+                onClick={() => { setFilterKey('all'); setMobileCatSheetOpen(false) }}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition mb-1 ${filterKey === 'all' ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-600 active:bg-gray-50'}`}
+              >
+                <UtensilsCrossed size={14} />
+                <span className="flex-1 text-left">All Items</span>
+                <span className="text-xs text-gray-400">{items.length}</span>
+              </button>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCatDragEnd}>
+                <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                  {categories.map(cat => (
+                    <SortableCatRow
+                      key={cat.id}
+                      cat={cat}
+                      filterKey={filterKey}
+                      setFilterKey={k => { setFilterKey(k); setMobileCatSheetOpen(false) }}
+                      expandedCats={expandedCats}
+                      onToggleExpand={id => setExpandedCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })}
+                      items={items}
+                      openCatModal={openCatModal}
+                      deleteCat={deleteCat}
+                      onSubDragEnd={handleSubDragEnd}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-100 flex gap-2 shrink-0">
+              <button
+                onClick={() => { setMobileCatSheetOpen(false); openCatModal('cat') }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-dashed border-gray-200 active:bg-gray-50 transition"
+              >
+                <Plus size={14} /> Add Category
+              </button>
+              <button
+                onClick={() => { setMobileCatSheetOpen(false); setTagModal(true) }}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 active:bg-gray-50 transition"
+              >
+                <Tag size={14} /> Tags
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Category / Subcategory Modal */}

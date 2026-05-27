@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Sidebar from '@/components/dashboard/Sidebar'
-import NotificationBell from '@/components/dashboard/NotificationBell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -55,15 +54,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-x-hidden">
-        {/* pt-16 on mobile offsets the fixed top bar (h-14 + gap); lg resets to p-8 */}
-        <div className="px-4 pt-16 pb-8 lg:p-8 max-w-7xl mx-auto">
+        {/* Mobile: pt-16 for top app bar, pb-28 clears bottom nav + safe area */}
+        <div className="px-4 pt-16 pb-28 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
-      {/* On mobile, shift left of the hamburger button; desktop unchanged */}
-      <div className="fixed top-3 right-14 lg:top-5 lg:right-5 z-50">
-        <NotificationBell />
-      </div>
+      {/* NotificationBell is rendered once inside Sidebar to avoid duplicate realtime subscriptions */}
     </div>
   )
 }
