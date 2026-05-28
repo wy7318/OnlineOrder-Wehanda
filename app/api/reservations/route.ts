@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { reservationConfirmationEmail } from '@/lib/email/reservationConfirmation'
 import { reservationConfirmedEmail } from '@/lib/email/reservationConfirmed'
+import { sendExpoPush } from '@/lib/expoPush'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -143,6 +144,29 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Push notification to owner's mobile devices (fire-and-forget)
+    supabase
+      .from('device_push_tokens')
+      .select('expo_push_token')
+      .eq('restaurant_id', restaurant_id)
+      .then(({ data: tokens }) => {
+        if (!tokens?.length) return
+        const dateStr = new Date(reservation_date).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric',
+        })
+        sendExpoPush(
+          tokens.map(t => ({
+            to: t.expo_push_token,
+            title: 'New Reservation',
+            body: `${customer_name} · Party of ${party_size} · ${dateStr} at ${reservation_time.slice(0, 5)}`,
+            data: { type: 'new_reservation', reservation_id: data.id },
+            channelId: 'reservations',
+            sound: 'default' as const,
+            priority: 'high' as const,
+          }))
+        ).catch(() => {})
+      })
 
     // Send email: confirmed immediately (auto-confirm ON) or pending receipt (auto-confirm OFF)
     if (data.customer_email) {

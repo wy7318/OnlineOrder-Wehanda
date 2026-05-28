@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateOrderNumber } from '@/lib/utils/helpers'
 import { sendEmail } from '@/lib/email'
 import { orderConfirmationEmail } from '@/lib/email/orderConfirmation'
+import { sendExpoPush } from '@/lib/expoPush'
 
 export async function POST(request: Request) {
   try {
@@ -271,6 +272,30 @@ export async function POST(request: Request) {
         )
       }
     }
+
+    // Push notification to owner's mobile devices (fire-and-forget)
+    supabase
+      .from('device_push_tokens')
+      .select('expo_push_token')
+      .eq('restaurant_id', restaurant_id)
+      .then(({ data: tokens }) => {
+        if (!tokens?.length) return
+        const typeLabel =
+          order.order_type === 'dine_in' ? 'Dine-in'
+          : order.order_type === 'pickup' ? 'Pickup'
+          : 'Delivery'
+        sendExpoPush(
+          tokens.map(t => ({
+            to: t.expo_push_token,
+            title: `New ${typeLabel} Order`,
+            body: `#${order.order_number} · $${Number(order.total_amount).toFixed(2)} · ${order.customer_name}`,
+            data: { type: 'new_order', order_id: order.id },
+            channelId: 'orders',
+            sound: 'default' as const,
+            priority: 'high' as const,
+          }))
+        ).catch(() => {})
+      })
 
     // Send order confirmation email (fire-and-forget)
     if (order.customer_email) {
