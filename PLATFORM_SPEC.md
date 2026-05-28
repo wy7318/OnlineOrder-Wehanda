@@ -24,6 +24,7 @@
 | Payments | Stripe (platform keys + per-restaurant connected accounts) |
 | State (client) | Zustand (cart store, notification store) |
 | Styling | Tailwind CSS |
+| Mobile / PWA | Mobile-first responsive design, PWA metadata, bottom sheet drawers, safe-area handling, touch drag-and-drop |
 | Deployment | Vercel (with Vercel Cron Jobs) |
 
 **Environment variables required:**
@@ -968,91 +969,208 @@ Image URLs stored as full public URLs in `restaurants.logo_url`, `restaurants.co
 
 ---
 
-## 14. Mobile App Implementation Notes
+## 14. Mobile App Strategy
 
-### 14.1 Authentication
-- Use Supabase Auth client SDK
-- Two login flows: owner (restaurant dashboard) and customer (ordering portal)
-- Session persists via Supabase's built-in token refresh
-- Check `GET /api/user/role` after login to route user to correct app section
+The mobile app uses a **thin native shell (WebView wrapper)** approach. The web platform has already been fully redesigned for mobile-first use — all pages are responsive and optimized for a native-like mobile UX. The native app wraps this existing mobile web view without rebuilding any features.
 
-### 14.2 Customer App (primary mobile use case)
-The customer ordering portal is the primary candidate for a mobile app. It currently lives at `/restaurant/[slug]`.
+### 14.1 Architecture: WebView Wrapper
 
-**Key screens needed:**
-1. Restaurant discovery / search (not currently in web app — new feature)
-2. Restaurant home (menu, hours, info)
-3. Menu browsing (categories → items)
-4. Item detail with options
-5. Cart
-6. Checkout (name/phone/email, order type, tip, loyalty redemption, payment)
-7. Order confirmation
-8. Order history
-9. Reservation booking (date/time/party size picker)
-10. Reservation history
-11. Loyalty wallet (balance, transactions)
-12. Profile settings
+**Recommended stack:** React Native with Expo + `react-native-webview`
 
-**All data available via existing APIs.** Mobile app should use the same endpoints the web app uses. No new backend work needed for the customer-facing flow.
-
-### 14.3 Owner App (secondary mobile use case)
-**Key screens needed:**
-1. Live order queue (most critical for mobile)
-2. Order status updates
-3. Reservations for today
-4. Basic daily revenue stats
-
-**Push notifications for new orders** — currently uses browser push; native mobile would use FCM/APNs (new backend work needed).
-
-### 14.4 Critical API Calls for Mobile
-
-**Bootstrap a restaurant page:**
 ```
-GET /api/restaurants  (owner) 
-  OR
-Supabase direct query: restaurants + restaurant_hours + categories + subcategories + menu_items + option_groups + options + tags
+Native Shell (React Native / Expo)
+  ├── Biometric Auth Screen (Face ID / Touch ID / Fingerprint)
+  ├── WebView → https://[platform-domain]
+  │   └── Full mobile-optimized web app (all features as-is)
+  ├── Native status bar
+  ├── Splash screen (Wehanda branding)
+  └── App icon (Wehanda logo)
 ```
 
-**Place an order:**
-```
-POST /api/orders
+**Why this approach:**
+- All features automatically reflected — no code duplication
+- Future web updates instantly available in the app with zero native releases
+- No separate mobile API layer needed
+- Single codebase for web + app
+
+### 14.2 Authentication: Biometric Login
+
+**Login options required:**
+1. **Biometric (primary):** Face ID (iOS), Touch ID (iOS), Fingerprint (Android)
+2. **Email / Password (fallback)**
+
+**Implementation flow:**
+1. On first app launch: show native login screen (email + password via Supabase Auth)
+2. On successful login: store Supabase session token in device secure keychain (`expo-secure-store`)
+3. On subsequent launches: prompt for biometric (Face ID / Touch ID) — on success, read token from keychain → inject into WebView to restore session
+4. On logout: clear token from secure keychain and return to native login screen
+
+**Session persistence:** Store both Supabase JWT access token and refresh token in `expo-secure-store`. Refresh the token natively via Supabase Auth SDK before loading the WebView so the session is always valid on load.
+
+### 14.3 Native Shell Requirements
+
+**Critical:** The app must not look like a browser or web page. Requirements:
+- **No URL bar** — no browser address bar, no navigation chrome
+- No browser back/forward buttons
+- No "open in browser" or browser share UI
+- Full-screen `WebView` filling the entire native viewport
+- Status bar: transparent overlay, brand color, light content style
+- Splash screen: Wehanda branding, shown during WebView initial load
+- App icon: Wehanda logo
+
+**React Native WebView configuration:**
+```tsx
+<WebView
+  ref={webViewRef}
+  source={{ uri: 'https://[platform-domain]' }}
+  style={{ flex: 1 }}
+  allowsInlineMediaPlayback
+  mediaPlaybackRequiresUserAction={false}
+  bounces={false}                          // no iOS rubber-band beyond content
+  overScrollMode="never"                   // Android
+  showsHorizontalScrollIndicator={false}
+  showsVerticalScrollIndicator={false}
+  onNavigationStateChange={(state) => setCanGoBack(state.canGoBack)}
+/>
 ```
 
-**Get loyalty info:**
-```
-GET /api/loyalty/balance?restaurant_id=
-```
-
-**Get upsell suggestions:**
-```
-GET /api/upsell?restaurant_id=&item_ids=id1,id2
-```
-
-**Check reservation availability:**
-```
-GET /api/reservations/availability?restaurant_id=&date=&party_size=
-```
-
-**Create reservation:**
-```
-POST /api/reservations
+### 14.4 Back Navigation (Android)
+Handle the Android hardware back button to navigate the WebView back instead of exiting the app:
+```tsx
+useEffect(() => {
+  const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (webViewRef.current && canGoBack) {
+      webViewRef.current.goBack()
+      return true
+    }
+    return false
+  })
+  return () => handler.remove()
+}, [canGoBack])
 ```
 
-### 14.5 Real-time Features
-Currently implemented via Supabase Realtime for the order queue. Mobile app can subscribe to the same Supabase channels using the Supabase mobile SDK.
+### 14.5 `device_type` Field
+When the native app loads the WebView, inject a signal so the web app can set `device_type` correctly when logging `customer_events`.
 
-### 14.6 Stripe Integration in Mobile
-- Use Stripe mobile SDK (React Native: `@stripe/stripe-react-native`)
-- Same payment flow: create PaymentIntent server-side, confirm client-side
-- PaymentIntent creation: `POST /api/stripe/create-payment-intent { restaurant_id, amount_cents }`
-- Get publishable key: `GET /api/stripe/public-config?restaurant_id=`
+**Injection approach:** Pass `?device_type=ios_app` or `?device_type=android_app` as a URL query param on the WebView source URI, or use `injectedJavaScript` to set `window.__deviceType` before the app loads. The web app reads this before writing to `customer_events`.
 
-### 14.7 `device_type` Field
-When logging `customer_events`, set `device_type` to `'ios_app'` or `'android_app'` as appropriate (currently all web events use `'desktop_web'` or `'mobile_web'`).
+### 14.6 Real-time Features
+The web app's existing Supabase Realtime connections (order queue, notifications) work without any changes inside the WebView.
+
+### 14.7 Stripe Payments in App
+The card payment flow (Stripe.js + Stripe Elements) works as-is inside the WebView — no native Stripe SDK needed. The web app loads Stripe.js in the WebView context and processes payments normally.
+
+### 14.8 Push Notifications
+Currently the web app uses browser push (Web Push API). For the native app:
+- Use **Expo Push Notifications** (wraps FCM for Android, APNs for iOS)
+- New backend work required: add `POST /api/notifications/register-device` to store Expo push tokens per user
+- Trigger notifications from `PATCH /api/orders/[id]` status updates
 
 ---
 
-## 15. Data Flow Diagrams
+## 15. Mobile Web View Implementation
+
+The web platform is built mobile-first. All dashboard pages and the public portal are fully responsive with native-like interactions. Key implementation details for developers extending the codebase or building the native wrapper:
+
+### 15.1 PWA Metadata
+Configured in `app/layout.tsx`:
+```tsx
+viewport: {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',        // fills iPhone notch / Dynamic Island area
+  userScalable: false,
+},
+appleWebApp: {
+  capable: true,
+  statusBarStyle: 'black-translucent',
+  title: 'Wehanda',
+},
+```
+
+### 15.2 Responsive Breakpoints
+Tailwind CSS breakpoints used throughout:
+- **Mobile:** default (no prefix) — single column, bottom sheets, scrollable pill tabs, FAB
+- **Desktop:** `lg:` prefix — sidebar panels, grid layouts, right-side drawers
+
+Key utility patterns:
+| Pattern | Usage |
+|---|---|
+| `lg:hidden` | Mobile-only elements (FAB, pill tab bar, hero card) |
+| `hidden lg:block` / `hidden lg:flex` | Desktop-only elements (sidebar panels, desktop headers) |
+| `overflow-x-auto` + `shrink-0 whitespace-nowrap` | Horizontally scrollable pill / tab bars |
+| `lg:flex-1 lg:justify-center` | Pill tabs expand on desktop, scroll on mobile |
+
+### 15.3 Safe Area Handling
+iOS home indicator and notch are handled with CSS environment variables:
+```tsx
+// Bottom-positioned elements (FAB, bottom sheets)
+style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}
+```
+This prevents content from hiding behind the iOS home indicator.
+
+### 15.4 Bottom Sheet Pattern
+Mobile modals/drawers open as bottom sheets; on desktop they remain right-side panels:
+```tsx
+// Container
+<div className="fixed inset-0 z-40 flex flex-col justify-end lg:flex-row lg:justify-end">
+  <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={close} />
+  {/* Panel */}
+  <div className="relative w-full lg:max-w-lg bg-white max-h-[92vh] lg:max-h-none rounded-t-3xl lg:rounded-none animate-slide-up lg:[animation:none]">
+    {/* Drag handle — mobile only */}
+    <div className="flex justify-center pt-3 pb-1 lg:hidden">
+      <div className="w-10 h-1 bg-gray-200 rounded-full" />
+    </div>
+  </div>
+</div>
+```
+`animate-slide-up` is a custom Tailwind animation in `tailwind.config.ts` that slides the panel up from the bottom on mobile; `lg:[animation:none]` disables it on desktop.
+
+### 15.5 Touch Drag-and-Drop
+All drag-and-drop reordering (menu items, categories) uses **dnd-kit** with both pointer and touch sensors:
+```tsx
+const sensors = useSensors(
+  useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+)
+```
+- `delay: 250` prevents accidental drags during scroll gestures
+- Drag handles have `touch-none` CSS class to suppress browser scroll interception
+- Mobile list and desktop grid each have their own `DndContext` to avoid duplicate ID conflicts
+
+### 15.6 Floating Action Button (FAB)
+Mobile pages use a fixed FAB positioned above the bottom navigation bar:
+```tsx
+<button
+  className="lg:hidden fixed right-4 z-40 w-14 h-14 bg-brand-500 rounded-full shadow-xl"
+  style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}
+>
+  <Plus size={24} className="text-white" />
+</button>
+```
+
+### 15.7 Per-Page Mobile Layouts
+
+**Menu Builder (`/menu`):**
+- Desktop left sidebar (categories panel) → hidden on mobile (`hidden lg:flex`)
+- Category navigation → horizontal scrollable pill strip on mobile
+  - Category pills: filled background (`bg-brand-500 text-white` active, `bg-gray-100` inactive)
+  - Subcategory pills: outlined style with `↳` prefix, smaller text, white background with border — visually distinct from parent categories
+- Item display → card list with drag handle on mobile; masonry grid on desktop
+- Category/subcategory reordering → "Categories" toolbar button opens a dedicated bottom sheet on mobile
+- Item form → bottom sheet on mobile, right-side panel on desktop
+
+**Customer Detail (`/customers/[id]`):**
+- Desktop two-column layout (main + sidebar) → single column on mobile
+- Desktop page header → compact inline header with back button on mobile
+- Sidebar content (tags, segments, dietary flags, notes) → accessible via "Info" tab on mobile
+- Contact info rows (email, phone) → full-width tappable `<button>` rows with tap-to-copy on mobile (Square/Toast/HubSpot CRM pattern)
+- Stats → 2×2 grid on mobile
+
+---
+
+## 16. Data Flow Diagrams
 
 ### Order Placement
 ```
@@ -1091,4 +1209,4 @@ Customer selects date + party size
 
 ---
 
-*Document generated from codebase analysis — Wehanda platform, May 2026*
+*Document generated from codebase analysis — Wehanda platform, May 2026. Sections 14–15 updated to reflect mobile-first web implementation and WebView wrapper app strategy.*
