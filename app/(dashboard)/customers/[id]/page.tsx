@@ -38,7 +38,7 @@ interface CustomerProfile {
   }
 }
 
-type Tab = 'orders' | 'reservations' | 'events' | 'addresses' | 'communication'
+type Tab = 'orders' | 'reservations' | 'events' | 'addresses' | 'communication' | 'info'
 
 interface Reservation {
   id: string
@@ -386,19 +386,139 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <Header
-        title={displayName(customer)}
-        subtitle="Customer profile"
-        actions={
-          <Button variant="outline" size="sm" onClick={() => router.back()}>
-            <ArrowLeft size={14} /> Back
-          </Button>
-        }
-      />
+      {/* ── Mobile compact header ─────────────────────────────────────────── */}
+      <div className="lg:hidden flex items-center gap-3 mb-4">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl shadow-sm active:bg-gray-50 transition shrink-0"
+        >
+          <ArrowLeft size={14} /> Back
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 leading-tight truncate">{displayName(customer)}</h1>
+          <p className="text-xs text-gray-400">Customer profile</p>
+        </div>
+        {customer.is_blocked && <Badge variant="danger">Blocked</Badge>}
+      </div>
+
+      {/* ── Desktop header ────────────────────────────────────────────────── */}
+      <div className="hidden lg:block">
+        <Header
+          title={displayName(customer)}
+          subtitle="Customer profile"
+          actions={
+            <Button variant="outline" size="sm" onClick={() => router.back()}>
+              <ArrowLeft size={14} /> Back
+            </Button>
+          }
+        />
+      </div>
+
+      {/* ── Mobile: hero identity card + stats grid ───────────────────────── */}
+      <div className="lg:hidden space-y-3 mb-4">
+
+        {/* Identity + contact card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={cn(
+              'w-14 h-14 rounded-full text-xl font-bold flex items-center justify-center shrink-0',
+              customer.is_blocked ? 'bg-red-100 text-red-500' : 'bg-brand-100 text-brand-600'
+            )}>
+              {initials(customer)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-bold text-gray-900 text-base leading-tight">{displayName(customer)}</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Since {new Date(customer.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+              </p>
+              <div className="mt-1.5">
+                <Badge variant="default">{ACQUISITION_LABELS[customer.acquisition_source] ?? customer.acquisition_source}</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Tap-to-copy contact rows */}
+          <div className="space-y-2">
+            {customer.email && (
+              <button
+                onClick={() => copyToClipboard(customer.email!, 'email')}
+                className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl active:bg-gray-100 transition text-left"
+              >
+                <span className="text-sm text-gray-700 truncate flex-1">{customer.email}</span>
+                {copied === 'email'
+                  ? <Check size={14} className="text-green-500 shrink-0" />
+                  : <Copy size={14} className="text-gray-400 shrink-0" />
+                }
+              </button>
+            )}
+            {customer.phone && (
+              <button
+                onClick={() => copyToClipboard(customer.phone!, 'phone')}
+                className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl active:bg-gray-100 transition text-left"
+              >
+                <span className="text-sm text-gray-700 flex-1">{customer.phone}</span>
+                {copied === 'phone'
+                  ? <Check size={14} className="text-green-500 shrink-0" />
+                  : <Copy size={14} className="text-gray-400 shrink-0" />
+                }
+              </button>
+            )}
+          </div>
+
+          {/* Marketing opt-in toggle */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Marketing opt-in</p>
+              {customer.marketing_opt_in && customer.marketing_opt_in_at && (
+                <p className="text-xs text-gray-400">{new Date(customer.marketing_opt_in_at).toLocaleDateString()}</p>
+              )}
+            </div>
+            <button
+              onClick={toggleMarketingOptIn}
+              className={cn('relative w-10 h-5 rounded-full transition-colors focus:outline-none', customer.marketing_opt_in ? 'bg-brand-500' : 'bg-gray-200')}
+            >
+              <span className={cn('absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform', customer.marketing_opt_in && 'translate-x-5')} />
+            </button>
+          </div>
+
+          {/* Block button */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <Button
+              variant={customer.is_blocked ? 'outline' : 'danger'}
+              size="sm"
+              className="w-full"
+              onClick={toggleBlock}
+              loading={blockLoading}
+            >
+              {customer.is_blocked ? <><ShieldOff size={12} /> Unblock Customer</> : <><Ban size={12} /> Block Customer</>}
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats 2×2 grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+            <p className="text-xl font-bold text-gray-900">{stats.total_orders}</p>
+            <p className="text-xs text-gray-400">Orders</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+            <p className="text-xl font-bold text-gray-900">{formatCurrency(stats.lifetime_value)}</p>
+            <p className="text-xs text-gray-400">Lifetime</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+            <p className="text-xl font-bold text-gray-900">{formatCurrency(stats.avg_order_value)}</p>
+            <p className="text-xs text-gray-400">Avg Order</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+            <p className="text-xl font-bold text-gray-900">{stats.days_since_last ?? '—'}</p>
+            <p className="text-xs text-gray-400">Days Since</p>
+          </div>
+        </div>
+      </div>
 
       <div className="flex gap-6 items-start">
-        {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
-        <div className="w-72 shrink-0 space-y-4">
+        {/* ── Left Sidebar (desktop only) ───────────────────────────────────── */}
+        <div className="hidden lg:block w-72 shrink-0 space-y-4">
 
           {/* Identity card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -588,27 +708,30 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
         {/* ── Main Content ──────────────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-5">
+          {/* Tab bar — scrollable on mobile, even-width on desktop */}
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-4 overflow-x-auto">
             {([
-              { key: 'orders', label: 'Orders', icon: ShoppingBag },
-              { key: 'reservations', label: 'Reservations', icon: CalendarDays },
-              { key: 'events', label: 'Events', icon: Activity },
-              { key: 'addresses', label: 'Addresses', icon: MapPin },
-              { key: 'communication', label: 'Comms', icon: MessageSquare },
+              { key: 'orders',        label: 'Orders',       icon: ShoppingBag,   mobileOnly: false },
+              { key: 'reservations',  label: 'Reservations', icon: CalendarDays,  mobileOnly: false },
+              { key: 'events',        label: 'Events',       icon: Activity,      mobileOnly: false },
+              { key: 'addresses',     label: 'Addresses',    icon: MapPin,        mobileOnly: false },
+              { key: 'communication', label: 'Comms',        icon: MessageSquare, mobileOnly: false },
+              { key: 'info',          label: 'Info',         icon: Users,         mobileOnly: true  },
             ] as const).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
+                  'flex items-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition whitespace-nowrap shrink-0',
+                  'lg:flex-1 lg:justify-center',
+                  tab.mobileOnly && 'lg:hidden',
                   activeTab === tab.key
                     ? 'bg-white shadow-sm text-gray-900'
                     : 'text-gray-500 hover:text-gray-700'
                 )}
               >
                 <tab.icon size={14} />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
@@ -896,6 +1019,88 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
           )}
+          {/* ── Info Tab (mobile only — sidebar content) ────────────────────── */}
+          {activeTab === 'info' && (
+            <div className="lg:hidden space-y-4">
+
+              {/* Tags */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tags</p>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {(customer.tags ?? []).map(tag => (
+                    <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="text-gray-400 hover:text-red-500 transition"><X size={10} /></button>
+                    </span>
+                  ))}
+                  {(customer.tags ?? []).length === 0 && <p className="text-xs text-gray-400">No tags yet</p>}
+                </div>
+                <form onSubmit={e => { e.preventDefault(); addTag() }} className="flex gap-1.5">
+                  <input
+                    value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="Add tag…"
+                    className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-brand-400"
+                  />
+                  <button type="submit" disabled={tagLoading || !tagInput.trim()} className="p-1.5 bg-brand-500 text-white rounded-lg disabled:opacity-40 hover:bg-brand-600 transition">
+                    <Plus size={12} />
+                  </button>
+                </form>
+              </div>
+
+              {/* Segments */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Segments</p>
+                  <button onClick={() => setSegModalOpen(true)} className="text-brand-500 hover:text-brand-600 transition"><Plus size={14} /></button>
+                </div>
+                <div className="space-y-2">
+                  {segments.map(seg => (
+                    <div key={seg.id} className="flex items-center justify-between py-1">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
+                        <span className="text-sm text-gray-700">{seg.name}</span>
+                      </span>
+                      <button onClick={() => removeSegment(seg.id)} className="text-gray-300 hover:text-red-400 transition p-1"><X size={14} /></button>
+                    </div>
+                  ))}
+                  {segments.length === 0 && <p className="text-xs text-gray-400">No segments</p>}
+                </div>
+              </div>
+
+              {/* Dietary flags */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dietary Flags</p>
+                  <button onClick={() => setDietModalOpen(true)} className="text-brand-500 hover:text-brand-600 transition"><Plus size={14} /></button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {dietary_flags.map(f => (
+                    <span key={f.flag_type} className="flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">
+                      {DIETARY_LABELS[f.flag_type]}
+                      {f.source === 'inferred_from_orders' && <span className="text-green-400 text-[9px] font-bold">AI</span>}
+                      <button onClick={() => removeDietaryFlag(f.flag_type)} className="text-green-400 hover:text-red-500 transition ml-0.5"><X size={10} /></button>
+                    </span>
+                  ))}
+                  {dietary_flags.length === 0 && <p className="text-xs text-gray-400">None recorded</p>}
+                </div>
+              </div>
+
+              {/* Internal notes */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Internal Notes</p>
+                  {notesSaving && <span className="text-xs text-gray-400">Saving…</span>}
+                </div>
+                <textarea
+                  value={notes}
+                  onChange={e => handleNotesChange(e.target.value)}
+                  rows={5}
+                  placeholder="Notes visible only to staff…"
+                  className="w-full text-sm text-gray-700 border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:border-brand-400"
+                />
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
