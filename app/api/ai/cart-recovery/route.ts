@@ -77,12 +77,22 @@ export async function POST(request: Request) {
     JSON.stringify({ restaurant: restaurant.name, customer: customerName, cart_items: items }),
   )
 
+  const itemSummary = items.map(i => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join(', ')
+
   const html = buildEmailHtml({
     restaurantName: restaurant.name,
     customerName,
     body: msgBody,
     ctaLabel: 'Complete My Order',
     ctaUrl: `${getEmailBaseUrl()}/restaurant/${restaurant.slug}`,
+    highlight: {
+      emoji: '🛒',
+      label: 'Still in your cart',
+      value: `${items.length} item${items.length !== 1 ? 's' : ''}`,
+      note: itemSummary || undefined,
+      accentColor: '#ea580c',
+      bgColor: '#fff7ed',
+    },
   })
 
   await sendEmail({ to: customer.email, subject, html })

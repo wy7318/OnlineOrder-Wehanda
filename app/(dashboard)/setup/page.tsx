@@ -12,7 +12,7 @@ import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import { useToast } from '@/components/ui/Toast'
 import type { Restaurant, RestaurantHours } from '@/lib/types'
-import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed, Star, CreditCard } from 'lucide-react'
+import { Globe, Phone, Mail, MapPin, Clock, Save, Bell, CalendarDays, ImageIcon, X, UtensilsCrossed, Star, CreditCard, Zap } from 'lucide-react'
 import Image from 'next/image'
 import { useNotificationSettings } from '@/store/notificationSettings'
 import { playBell } from '@/lib/utils/bellSound'
@@ -77,6 +77,14 @@ function SetupContent() {
   const [loyaltyWizardOpen, setLoyaltyWizardOpen] = useState(false)
   const [stripeSettings, setStripeSettings] = useState<StripeSettings | null>(null)
   const [stripeWizardOpen, setStripeWizardOpen] = useState(false)
+  const [automationSettings, setAutomationSettings] = useState({
+    birthday_enabled: true,
+    after_order_enabled: true,
+    quiet_day_enabled: true,
+    milestone_enabled: true,
+    new_item_enabled: true,
+  })
+  const [automationSaving, setAutomationSaving] = useState(false)
 
   // Handle return from Stripe OAuth redirect
   useEffect(() => {
@@ -160,6 +168,10 @@ function SetupContent() {
         // Load Stripe settings
         const sRes = await fetch('/api/stripe/settings')
         if (sRes.ok) setStripeSettings(await sRes.json())
+
+        // Load automation settings
+        const aRes = await fetch('/api/ai/automation-settings')
+        if (aRes.ok) setAutomationSettings(await aRes.json())
       }
     }
     load()
@@ -183,6 +195,21 @@ function SetupContent() {
     const { error } = await supabase.storage.from('restaurant-images').upload(path, file, { upsert: true })
     if (error) { toast(`Image upload failed: ${error.message}`, 'error'); return null }
     return supabase.storage.from('restaurant-images').getPublicUrl(path).data.publicUrl
+  }
+
+  async function saveAutomation(key: keyof typeof automationSettings, value: boolean) {
+    const updated = { ...automationSettings, [key]: value }
+    setAutomationSettings(updated)
+    setAutomationSaving(true)
+    try {
+      await fetch('/api/ai/automation-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      })
+    } finally {
+      setAutomationSaving(false)
+    }
   }
 
   async function handleSave() {
@@ -852,6 +879,81 @@ function SetupContent() {
               >
                 {stripeSettings?.stripe_enabled ? 'Manage Stripe' : 'Set Up Payments'}
               </button>
+            </div>
+          )}
+
+          {/* AI Marketing Automations */}
+          {restaurant && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Zap size={17} className="text-brand-500" /> AI Marketing
+                </h3>
+                {automationSaving && (
+                  <span className="text-[10px] text-gray-400 font-medium">Saving…</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mb-4">
+                Automated emails sent to customers at the right moment — no extra work needed
+              </p>
+
+              <div className="space-y-3">
+                {([
+                  {
+                    key: 'birthday_enabled' as const,
+                    emoji: '🎂',
+                    label: 'Birthday emails',
+                    desc: 'Sent the day before a customer\'s birthday',
+                  },
+                  {
+                    key: 'after_order_enabled' as const,
+                    emoji: '🍽️',
+                    label: 'After-order follow-up',
+                    desc: 'Check in 3 days after a customer\'s meal',
+                  },
+                  {
+                    key: 'milestone_enabled' as const,
+                    emoji: '🎉',
+                    label: 'Milestone rewards',
+                    desc: 'Celebrate 5th, 10th, 25th orders',
+                  },
+                  {
+                    key: 'quiet_day_enabled' as const,
+                    emoji: '☕',
+                    label: 'Slow day boost',
+                    desc: 'Invite regulars when revenue is low (needs daily target)',
+                  },
+                  {
+                    key: 'new_item_enabled' as const,
+                    emoji: '✨',
+                    label: 'New item launch',
+                    desc: 'Notify category fans when you add a new dish',
+                  },
+                ] as const).map(opt => (
+                  <label key={opt.key} className="flex items-start gap-3 cursor-pointer">
+                    <div className="relative shrink-0 mt-0.5">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={automationSettings[opt.key]}
+                        onChange={e => saveAutomation(opt.key, e.target.checked)}
+                      />
+                      <div className="w-10 h-6 bg-gray-200 peer-checked:bg-brand-500 rounded-full transition-colors" />
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">
+                        <span className="mr-1">{opt.emoji}</span>{opt.label}
+                      </p>
+                      <p className="text-xs text-gray-400 leading-snug">{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <p className="text-[10px] text-gray-400 mt-4 leading-relaxed">
+                All emails are written by AI, only sent to customers who opted in to marketing, and won't repeat more than once per week.
+              </p>
             </div>
           )}
         </div>

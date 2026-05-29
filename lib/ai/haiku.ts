@@ -76,45 +76,207 @@ Rules:
 - Be specific and direct — say exactly what to do, not just "consider improving"
 - Never use words like: "conversion rate", "CTR", "optimize", "leverage", "monetize"
 Only return the JSON array, nothing else.`,
+
+  // Sent on customer's birthday (or a day or two before)
+  birthday: `You write short, warm birthday emails from a restaurant owner to a customer.
+Make it feel like a genuine birthday message from a friend, not a marketing email.
+Return JSON only: {"subject":"…","body":"…"}
+Rules:
+- subject: max 55 chars, warm and personal (e.g. "Happy Birthday, Sarah! 🎂")
+- body: 2-3 sentences, plain text only, no HTML tags
+- Mention their name and wish them a wonderful birthday
+- If they have a usual order, give it a warm mention
+- If they have birthday bonus points, mention it as a gift from the restaurant
+- Sound genuine, never automated
+- Never use words like: "campaign", "offer", "promotion", "redeem", "conversion"`,
+
+  // Sent 3 days after an order to invite them back
+  afterOrder: `You write short, friendly follow-up emails from a restaurant owner sent a few days after a customer's meal.
+Write like a restaurant owner who genuinely cares that the customer enjoyed their food.
+Return JSON only: {"subject":"…","body":"…"}
+Rules:
+- subject: max 55 chars, friendly (e.g. "Hope you enjoyed your meal!")
+- body: 2 sentences max, plain text only, no HTML tags
+- Reference what they ordered so it feels personal
+- Keep it light — no pressure, just a warm check-in and gentle invitation to come back
+- Never use words like: "feedback loop", "re-engage", "retention", "follow-up campaign"`,
+
+  // Sent to customers in same category when a new item launches
+  newItemLaunch: `You write short, exciting emails from a restaurant owner announcing a brand-new menu item.
+Write like you're texting a regular who you know will love it.
+Return JSON only: {"subject":"…","body":"…"}
+Rules:
+- subject: max 55 chars, exciting (e.g. "We just added something you'll love 🍜")
+- body: 2-3 sentences, plain text only, no HTML tags
+- Name the item and describe it in one mouth-watering sentence
+- Mention why this customer in particular might love it (based on what they usually order)
+- End with a simple invitation to try it
+- Never use words like: "launch", "campaign", "promotion", "CTR", "new menu item rollout"`,
+
+  // Sent during a slow day to bring customers in
+  quietDay: `You write short, friendly emails from a restaurant owner on a slow day.
+Write like you're reaching out to a regular and letting them know it's a great time to come in.
+Return JSON only: {"subject":"…","body":"…"}
+Rules:
+- subject: max 55 chars, casual and inviting (e.g. "Come in today — it's a perfect time 🍽️")
+- body: 2 sentences max, plain text only, no HTML tags
+- Keep it casual — don't mention revenue targets or slow days explicitly
+- Optionally mention a special item or reason it's a nice time to visit
+- Never use words like: "slow day", "revenue target", "boost sales", "promotion", "incentive"`,
+
+  // Sent when customer hits a milestone order count (5th, 10th, 25th)
+  milestone: `You write short, celebratory emails from a restaurant owner when a customer hits a milestone.
+Make the customer feel like a true regular and valued guest.
+Return JSON only: {"subject":"…","body":"…"}
+Rules:
+- subject: max 55 chars, celebratory (e.g. "You're officially one of our regulars! 🎉")
+- body: 2-3 sentences, plain text only, no HTML tags
+- Mention the milestone number (5th, 10th, 25th order) warmly
+- Make them feel special and appreciated — not like a statistic
+- If there's a bonus reward, mention it as a genuine thank-you gift
+- Never use words like: "loyalty metric", "milestone achievement", "customer retention", "engagement"`,
 }
 
-// Email HTML wrapper — Haiku writes the body text, this wraps it
+// Optional highlight card shown between greeting and body text.
+// Each email type passes its own relevant data here.
+export interface EmailHighlight {
+  emoji: string
+  label: string   // small caps label above the value
+  value: string   // large prominent value
+  note?: string   // optional small line below value
+  accentColor: string  // hex — used for value text and card border
+  bgColor: string      // hex — card background
+}
+
+// Email HTML wrapper — uses table-based layout for email client compatibility.
+// Haiku writes the body text; this wraps it in a polished, branded shell.
 export function buildEmailHtml({
   restaurantName,
   customerName,
   body,
   ctaLabel,
   ctaUrl,
+  highlight,
 }: {
   restaurantName: string
   customerName: string
   body: string
   ctaLabel: string
   ctaUrl: string
+  highlight?: EmailHighlight
 }): string {
-  const escapedBody = body
+  const bodyParagraphs = body
     .split('\n')
     .filter(l => l.trim())
-    .map(l => `<p style="margin:0 0 14px 0;line-height:1.6">${l}</p>`)
+    .map(l => `<p style="margin:0 0 14px 0;font-size:15px;color:#374151;line-height:1.7">${l}</p>`)
     .join('')
 
+  const highlightHtml = highlight ? `
+    <tr>
+      <td style="padding:0 32px 24px 32px">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:${highlight.bgColor};border-radius:14px;border-left:4px solid ${highlight.accentColor}">
+          <tr>
+            <td style="padding:18px 20px">
+              <p style="margin:0;font-size:30px;line-height:1">${highlight.emoji}</p>
+              <p style="margin:8px 0 2px 0;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px">${highlight.label}</p>
+              <p style="margin:0;font-size:28px;font-weight:800;color:${highlight.accentColor};letter-spacing:-0.5px">${highlight.value}</p>
+              ${highlight.note ? `<p style="margin:4px 0 0 0;font-size:12px;color:#9ca3af">${highlight.note}</p>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>` : ''
+
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:sans-serif">
-  <div style="max-width:480px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-    <div style="background:#037FFC;padding:24px 28px">
-      <p style="margin:0;color:#fff;font-size:18px;font-weight:700">${restaurantName}</p>
-    </div>
-    <div style="padding:28px">
-      <p style="margin:0 0 20px 0;font-size:15px;color:#374151">Hi ${customerName},</p>
-      <div style="font-size:15px;color:#374151">${escapedBody}</div>
-      <a href="${ctaUrl}" style="display:inline-block;margin-top:20px;padding:12px 28px;background:#037FFC;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px">${ctaLabel}</a>
-    </div>
-    <div style="padding:16px 28px;border-top:1px solid #f3f4f6">
-      <p style="margin:0;font-size:12px;color:#9ca3af">Sent by ${restaurantName} via Wehanda.</p>
-    </div>
-  </div>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>${restaurantName}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+              <table width="100%" cellpadding="0" cellspacing="0">
+
+                <!-- Header gradient -->
+                <tr>
+                  <td style="background:linear-gradient(135deg,#037FFC 0%,#0255c4 100%);padding:28px 32px">
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px">${restaurantName}</p>
+                    <p style="margin:4px 0 0 0;color:rgba(255,255,255,0.65);font-size:13px">A message just for you</p>
+                  </td>
+                </tr>
+
+                <!-- Greeting -->
+                <tr>
+                  <td style="padding:28px 32px 20px 32px">
+                    <p style="margin:0;font-size:17px;font-weight:600;color:#111827">Hi ${customerName} 👋</p>
+                  </td>
+                </tr>
+
+                <!-- Highlight card (optional, per email type) -->
+                ${highlightHtml}
+
+                <!-- Body text -->
+                <tr>
+                  <td style="padding:0 32px 8px 32px">
+                    ${bodyParagraphs}
+                  </td>
+                </tr>
+
+                <!-- CTA button -->
+                <tr>
+                  <td style="padding:16px 32px 32px 32px">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background:#037FFC;border-radius:12px">
+                          <a href="${ctaUrl}"
+                             style="display:inline-block;padding:14px 30px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.1px">
+                            ${ctaLabel} &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr>
+                  <td style="padding:0 32px"><hr style="border:none;border-top:1px solid #f3f4f6;margin:0"></td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="padding:18px 32px;background:#fafafa;border-radius:0 0 20px 20px">
+                    <p style="margin:0;font-size:12px;color:#9ca3af">
+                      Sent by <strong style="color:#6b7280">${restaurantName}</strong> via Wehanda &nbsp;·&nbsp;
+                      You're receiving this as a valued customer.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Bottom spacer / branding -->
+          <tr>
+            <td align="center" style="padding:20px 0 8px 0">
+              <p style="margin:0;font-size:11px;color:#94a3b8">Powered by Wehanda</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`
 }

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Zap, ShoppingCart, AlertTriangle, Gift, TrendingDown,
   Mail, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp,
-  Eye, BarChart2, Loader2,
+  Eye, BarChart2, Loader2, TrendingUp, MousePointerClick,
+  ShoppingBag, DollarSign,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils/helpers'
 
@@ -73,7 +74,24 @@ interface MenuInsightsData {
   window_days: number
 }
 
+interface CampaignResult {
+  label: string
+  campaign_type: string
+  sent: number
+  clicks: number
+  orders: number
+  revenue: number
+  last_run: string
+}
+
+interface CampaignResultsData {
+  campaigns: CampaignResult[]
+  totals: { sent: number; orders: number; revenue: number }
+  window_days: number
+}
+
 type SendState = 'idle' | 'sending' | 'sent' | 'failed' | 'already_sent'
+type ResultWindow = '7' | '30' | '90'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -146,6 +164,17 @@ const SEGMENT_LABELS: Record<string, string> = {
   needs_attention: 'Needs Attention', one_time: 'One-time',
 }
 
+const CAMPAIGN_EMOJI: Record<string, string> = {
+  birthday: '🎂',
+  after_order: '🍽️',
+  new_item_launch: '✨',
+  quiet_day: '☕',
+  milestone: '🎉',
+  win_back: '💙',
+  cart_recovery: '🛒',
+  loyalty_nudge: '⭐',
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RevenueBoostPage() {
@@ -157,6 +186,11 @@ export default function RevenueBoostPage() {
 
   const [menuData, setMenuData] = useState<MenuInsightsData | null>(null)
   const [menuLoading, setMenuLoading] = useState(true)
+
+  const [resultsData, setResultsData] = useState<CampaignResultsData | null>(null)
+  const [resultsLoading, setResultsLoading] = useState(true)
+  const [resultWindow, setResultWindow] = useState<ResultWindow>('30')
+  const [resultsExpanded, setResultsExpanded] = useState(true)
 
   // Send state maps: customer_id → SendState
   const [cartStates, setCartStates] = useState<Record<string, SendState>>({})
@@ -175,7 +209,6 @@ export default function RevenueBoostPage() {
       if (res.ok) {
         const data: OpportunitiesData = await res.json()
         setOpData(data)
-        // Pre-seed recently_messaged items as already_sent
         const cs: Record<string, SendState> = {}
         for (const c of data.cart_recovery) if (c.recently_messaged) cs[c.customer_id] = 'already_sent'
         setCartStates(cs)
@@ -202,11 +235,20 @@ export default function RevenueBoostPage() {
     } finally { setMenuLoading(false) }
   }, [])
 
+  const loadResults = useCallback(async (days: ResultWindow) => {
+    setResultsLoading(true)
+    try {
+      const res = await fetch(`/api/ai/campaign-results?days=${days}`)
+      if (res.ok) setResultsData(await res.json())
+    } finally { setResultsLoading(false) }
+  }, [])
+
   useEffect(() => {
     loadOpportunities()
     loadNudge()
     loadMenuInsights()
-  }, [loadOpportunities, loadNudge, loadMenuInsights])
+    loadResults(resultWindow)
+  }, [loadOpportunities, loadNudge, loadMenuInsights, loadResults, resultWindow])
 
   async function sendCartRecovery(cart_id: string, customer_id: string) {
     setCartStates(s => ({ ...s, [customer_id]: 'sending' }))
@@ -268,7 +310,7 @@ export default function RevenueBoostPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Revenue Boost</h1>
-            <p className="text-[13px] text-gray-400">See who to reach out to today — AI writes the email for you</p>
+            <p className="text-[13px] text-gray-400">AI emails that bring customers back — sent automatically or on demand</p>
           </div>
           {!opLoading && totalOpportunities > 0 && (
             <span className="ml-auto shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-brand-500 text-white">
@@ -277,6 +319,117 @@ export default function RevenueBoostPage() {
           )}
         </div>
       </div>
+
+      {/* ── What's Working (Campaign Results) ── */}
+      <section>
+        <button
+          className="w-full flex items-center gap-2 mb-4"
+          onClick={() => setResultsExpanded(e => !e)}
+        >
+          <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+            <TrendingUp size={14} className="text-green-600" />
+          </div>
+          <h2 className="text-base font-bold text-gray-800 flex-1 text-left">What's working</h2>
+          <span className="text-[11px] text-gray-400 font-medium">Revenue your AI emails brought in</span>
+          {resultsExpanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+        </button>
+
+        {resultsExpanded && (
+          <>
+            {/* Window tabs */}
+            <div className="flex gap-1.5 mb-4">
+              {(['7', '30', '90'] as ResultWindow[]).map(d => (
+                <button
+                  key={d}
+                  onClick={() => { setResultWindow(d); loadResults(d) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    resultWindow === d
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {d === '7' ? 'Last 7 days' : d === '30' ? 'Last 30 days' : 'Last 90 days'}
+                </button>
+              ))}
+            </div>
+
+            {resultsLoading ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map(i => <Skeleton key={i} className="h-14" />)}
+              </div>
+            ) : !resultsData?.campaigns.length ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                <TrendingUp size={28} className="mx-auto mb-2 text-gray-200" />
+                <p className="text-sm font-medium text-gray-500">No campaign emails sent yet in this period</p>
+                <p className="text-xs text-gray-400 mt-1">Turn on automations in Restaurant Setup, or send emails from the sections below</p>
+              </div>
+            ) : (
+              <>
+                {/* Summary totals */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+                    <div className="flex items-center justify-center gap-1 mb-0.5">
+                      <Mail size={12} className="text-gray-400" />
+                      <p className="text-[11px] text-gray-400 font-medium">Emails sent</p>
+                    </div>
+                    <p className="text-xl font-bold text-gray-900">{resultsData.totals.sent.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+                    <div className="flex items-center justify-center gap-1 mb-0.5">
+                      <ShoppingBag size={12} className="text-gray-400" />
+                      <p className="text-[11px] text-gray-400 font-medium">Orders driven</p>
+                    </div>
+                    <p className="text-xl font-bold text-gray-900">{resultsData.totals.orders.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+                    <div className="flex items-center justify-center gap-1 mb-0.5">
+                      <DollarSign size={12} className="text-gray-400" />
+                      <p className="text-[11px] text-gray-400 font-medium">Revenue earned</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(resultsData.totals.revenue)}</p>
+                  </div>
+                </div>
+
+                {/* Per-campaign breakdown */}
+                <div className="space-y-2">
+                  {resultsData.campaigns.map(c => (
+                    <div key={c.campaign_type} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl shrink-0">{CAMPAIGN_EMOJI[c.campaign_type] ?? '📧'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{c.label}</p>
+                          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <Mail size={10} />
+                              {c.sent.toLocaleString()} sent
+                            </span>
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <MousePointerClick size={10} />
+                              {c.clicks.toLocaleString()} clicked
+                            </span>
+                            {c.orders > 0 && (
+                              <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <ShoppingBag size={10} />
+                                {c.orders} orders
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {c.revenue > 0 && (
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-bold text-green-600">{formatCurrency(c.revenue)}</p>
+                            <p className="text-[10px] text-gray-400">attributed</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </section>
 
       {/* ── Cart Recovery ── */}
       <section>
@@ -522,7 +675,6 @@ export default function RevenueBoostPage() {
                       <p className="text-[15px] font-semibold text-gray-900">{item.name}</p>
                       <span className="text-xs font-medium text-gray-500">{formatCurrency(item.price)}</span>
                     </div>
-                    {/* Stats row */}
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <span className="text-xs text-gray-400 flex items-center gap-1">
                         <Eye size={10} />

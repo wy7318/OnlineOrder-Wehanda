@@ -100,6 +100,16 @@ export async function POST(request: Request) {
     body: msgBody,
     ctaLabel: 'Order Now',
     ctaUrl: `${getEmailBaseUrl()}/restaurant/${restaurant.slug}`,
+    highlight: daysSince != null
+      ? {
+          emoji: '💙',
+          label: "We haven't seen you in",
+          value: `${daysSince} day${daysSince !== 1 ? 's' : ''}`,
+          note: 'Come back — your table is always ready',
+          accentColor: '#7c3aed',
+          bgColor: '#f5f3ff',
+        }
+      : undefined,
   })
 
   await sendEmail({ to: customer.email, subject, html })

@@ -398,6 +398,7 @@ export default function MenuBuilderPage() {
     happy_hour_start: '16:00',
     happy_hour_end: '18:00',
     happy_hour_days: [] as number[],
+    launch_campaign: false,
   })
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
@@ -493,7 +494,7 @@ export default function MenuBuilderPage() {
     setEditingItem(null); setImageFile(null); setImagePreview(''); setSelectedTagIds([])
     setOptionGroups([]); setDrawerTab('details'); setExpandedGroups(new Set())
     const preCat = filterKey === 'all' || filterKey.startsWith('sub:') ? '' : filterKey
-    setItemForm({ name: '', description: '', price: '', category_id: preCat, subcategory_id: '', image_url: '', is_available: true, available_order_types: [], happy_hour_enabled: false, happy_hour_start: '16:00', happy_hour_end: '18:00', happy_hour_days: [] })
+    setItemForm({ name: '', description: '', price: '', category_id: preCat, subcategory_id: '', image_url: '', is_available: true, available_order_types: [], happy_hour_enabled: false, happy_hour_start: '16:00', happy_hour_end: '18:00', happy_hour_days: [], launch_campaign: false })
     setDrawerOpen(true)
   }
 
@@ -509,6 +510,7 @@ export default function MenuBuilderPage() {
       happy_hour_start: item.happy_hour_start?.slice(0, 5) ?? '16:00',
       happy_hour_end: item.happy_hour_end?.slice(0, 5) ?? '18:00',
       happy_hour_days: (item.happy_hour_days ?? []) as number[],
+      launch_campaign: false,
     })
     setOptionGroups([])
     setDrawerOpen(true)
@@ -564,7 +566,18 @@ export default function MenuBuilderPage() {
     loadAll()
 
     if (!editingItem && itemId) {
-      // After creating, switch to options tab
+      // Launch campaign for category fans if owner opted in
+      if (itemForm.launch_campaign) {
+        fetch('/api/ai/launch-campaign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ menu_item_id: itemId }),
+        }).then(r => r.json()).then(d => {
+          if (d.sent > 0) toast(`Campaign launched — ${d.sent} customers notified!`, 'success')
+        }).catch(() => null)
+      }
+
+      // Switch to options tab
       const saved = { ...payload, id: itemId, display_order: items.length, created_at: '', updated_at: '', tags: [] } as unknown as ItemWithTags
       setEditingItem(saved)
       setDrawerTab('options')
@@ -1342,6 +1355,22 @@ export default function MenuBuilderPage() {
                     happyDays={itemForm.happy_hour_days}
                     onHappyDays={v => setItemForm(f => ({ ...f, happy_hour_days: v }))}
                   />
+
+                  {/* Campaign launch toggle — only for new items */}
+                  {!editingItem && (
+                    <div className="flex items-start gap-3 py-3 px-3 bg-brand-50 rounded-xl border border-brand-100">
+                      <Toggle
+                        checked={itemForm.launch_campaign}
+                        onChange={v => setItemForm(f => ({ ...f, launch_campaign: v }))}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-brand-800">✨ Announce to past customers</p>
+                        <p className="text-xs text-brand-600 leading-snug mt-0.5">
+                          AI will email customers who ordered from this category before — letting them know about the new dish
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 /* Options tab */

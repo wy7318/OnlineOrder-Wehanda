@@ -94,6 +94,23 @@ export async function POST(request: Request) {
     body: msgBody,
     ctaLabel: isRedeemable ? 'Redeem My Reward' : 'Order & Earn Points',
     ctaUrl: `${getEmailBaseUrl()}/restaurant/${restaurant.slug}`,
+    highlight: isRedeemable
+      ? {
+          emoji: '🎁',
+          label: 'Points ready to use',
+          value: `${balance.toLocaleString()} pts`,
+          note: 'Use them on your next order',
+          accentColor: '#d97706',
+          bgColor: '#fffbeb',
+        }
+      : {
+          emoji: '⭐',
+          label: 'Points earned so far',
+          value: `${balance.toLocaleString()} pts`,
+          note: `Only ${pointsNeeded} more to unlock your reward`,
+          accentColor: '#037FFC',
+          bgColor: '#eff6ff',
+        },
   })
 
   await sendEmail({ to: customer.email, subject, html })

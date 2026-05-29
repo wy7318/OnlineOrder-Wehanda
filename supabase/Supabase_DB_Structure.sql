@@ -12,6 +12,19 @@ CREATE TABLE public.active_carts (
   CONSTRAINT active_carts_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
   CONSTRAINT active_carts_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.ai_messages_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  restaurant_id uuid NOT NULL,
+  customer_id uuid,
+  message_type text NOT NULL CHECK (message_type = ANY (ARRAY['cart_recovery'::text, 'win_back'::text, 'loyalty_nudge'::text])),
+  channel text NOT NULL DEFAULT 'email'::text CHECK (channel = ANY (ARRAY['email'::text, 'push'::text])),
+  reference_id text,
+  subject text,
+  sent_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ai_messages_log_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_messages_log_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
+  CONSTRAINT ai_messages_log_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
+);
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   restaurant_id uuid NOT NULL,
@@ -355,6 +368,7 @@ CREATE TABLE public.restaurant_licenses (
   notes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  feature_revenue_boost boolean NOT NULL DEFAULT true,
   CONSTRAINT restaurant_licenses_pkey PRIMARY KEY (restaurant_id),
   CONSTRAINT restaurant_licenses_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
 );
