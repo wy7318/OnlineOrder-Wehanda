@@ -1,6 +1,17 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.active_carts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  restaurant_id uuid NOT NULL,
+  auth_user_id uuid NOT NULL,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  abandoned_at timestamp with time zone,
+  CONSTRAINT active_carts_pkey PRIMARY KEY (id),
+  CONSTRAINT active_carts_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
+  CONSTRAINT active_carts_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   restaurant_id uuid NOT NULL,

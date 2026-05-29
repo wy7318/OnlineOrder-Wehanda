@@ -14,7 +14,8 @@ export async function PATCH(
 
   const allowed = [
     'status', 'feature_menu', 'feature_orders', 'feature_reservations',
-    'feature_customers', 'feature_analytics', 'trial_ends_at', 'notes',
+    'feature_customers', 'feature_analytics', 'feature_revenue_boost',
+    'trial_ends_at', 'notes',
   ]
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const key of allowed) {

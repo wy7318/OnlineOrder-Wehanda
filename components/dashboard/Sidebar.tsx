@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, ClipboardList, Settings,
   ShoppingBag, LogOut, Shield, CalendarDays, Users, Store,
-  ChevronRight, BarChart2, MoreHorizontal,
+  ChevronRight, BarChart2, MoreHorizontal, Zap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/helpers'
@@ -18,6 +18,7 @@ type LicenseFeatures = {
   feature_reservations: boolean
   feature_customers: boolean
   feature_analytics: boolean
+  feature_revenue_boost: boolean
 }
 
 type NavItem = {
@@ -37,20 +38,22 @@ const MOBILE_PRIMARY: NavItem[] = [
 
 // Items shown in the "More" bottom sheet
 const MOBILE_SECONDARY: NavItem[] = [
-  { href: '/menu',         label: 'Menu Builder',      icon: UtensilsCrossed, feature: 'feature_menu' },
-  { href: '/analytics',    label: 'Analytics',         icon: BarChart2,       feature: 'feature_analytics' },
-  { href: '/setup',        label: 'Restaurant Setup',  icon: Settings },
+  { href: '/menu',            label: 'Menu Builder',      icon: UtensilsCrossed, feature: 'feature_menu' },
+  { href: '/analytics',       label: 'Analytics',         icon: BarChart2,       feature: 'feature_analytics' },
+  { href: '/revenue-boost',   label: 'Revenue Boost',     icon: Zap,             feature: 'feature_revenue_boost' },
+  { href: '/setup',           label: 'Restaurant Setup',  icon: Settings },
 ]
 
 // Full nav for the desktop sidebar
 const DESKTOP_NAV: NavItem[] = [
-  { href: '/dashboard',    label: 'Dashboard',        icon: LayoutDashboard },
-  { href: '/menu',         label: 'Menu',             icon: UtensilsCrossed,  feature: 'feature_menu' },
-  { href: '/orders',       label: 'Orders',           icon: ClipboardList,    feature: 'feature_orders' },
-  { href: '/reservations', label: 'Reservations',     icon: CalendarDays,     feature: 'feature_reservations' },
-  { href: '/customers',    label: 'Customers',        icon: Users,            feature: 'feature_customers' },
-  { href: '/analytics',    label: 'Analytics',        icon: BarChart2,        feature: 'feature_analytics' },
-  { href: '/setup',        label: 'Restaurant Setup', icon: Settings },
+  { href: '/dashboard',       label: 'Dashboard',        icon: LayoutDashboard },
+  { href: '/menu',            label: 'Menu',             icon: UtensilsCrossed,  feature: 'feature_menu' },
+  { href: '/orders',          label: 'Orders',           icon: ClipboardList,    feature: 'feature_orders' },
+  { href: '/reservations',    label: 'Reservations',     icon: CalendarDays,     feature: 'feature_reservations' },
+  { href: '/customers',       label: 'Customers',        icon: Users,            feature: 'feature_customers' },
+  { href: '/analytics',       label: 'Analytics',        icon: BarChart2,        feature: 'feature_analytics' },
+  { href: '/revenue-boost',   label: 'Revenue Boost',    icon: Zap,              feature: 'feature_revenue_boost' },
+  { href: '/setup',           label: 'Restaurant Setup', icon: Settings },
 ]
 
 function isActive(pathname: string, href: string) {

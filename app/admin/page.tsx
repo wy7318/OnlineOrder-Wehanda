@@ -42,6 +42,7 @@ interface LicenseRow {
   feature_reservations: boolean
   feature_customers: boolean
   feature_analytics: boolean
+  feature_revenue_boost: boolean
   trial_ends_at: string | null
   notes: string | null
   updated_at: string
@@ -82,6 +83,7 @@ export default function AdminPage() {
     feature_reservations: boolean
     feature_customers: boolean
     feature_analytics: boolean
+    feature_revenue_boost: boolean
     trial_ends_at: string  // 'YYYY-MM-DD' for date input, '' if none
     notes: string
   } | null>(null)
@@ -236,6 +238,7 @@ export default function AdminPage() {
       feature_reservations: row.feature_reservations,
       feature_customers: row.feature_customers,
       feature_analytics: row.feature_analytics,
+      feature_revenue_boost: row.feature_revenue_boost ?? true,
       trial_ends_at: row.trial_ends_at
         ? new Date(row.trial_ends_at).toISOString().slice(0, 10)
         : '',
@@ -263,6 +266,7 @@ export default function AdminPage() {
         feature_reservations: licenseForm.feature_reservations,
         feature_customers: licenseForm.feature_customers,
         feature_analytics: licenseForm.feature_analytics,
+        feature_revenue_boost: licenseForm.feature_revenue_boost,
         trial_ends_at: trialEndsAt,
         notes: licenseForm.notes || null,
       }),
@@ -540,11 +544,12 @@ export default function AdminPage() {
               <p className="text-xs font-semibold text-gray-600 mb-2">Feature Access</p>
               <div className="space-y-2">
                 {([
-                  { key: 'feature_menu',         label: 'Menu Builder' },
-                  { key: 'feature_orders',        label: 'Orders' },
-                  { key: 'feature_reservations',  label: 'Reservations' },
-                  { key: 'feature_customers',     label: 'Customers & CRM' },
-                  { key: 'feature_analytics',     label: 'Analytics' },
+                  { key: 'feature_menu',            label: 'Menu Builder' },
+                  { key: 'feature_orders',           label: 'Orders' },
+                  { key: 'feature_reservations',     label: 'Reservations' },
+                  { key: 'feature_customers',        label: 'Customers & CRM' },
+                  { key: 'feature_analytics',        label: 'Analytics' },
+                  { key: 'feature_revenue_boost',    label: 'Revenue Boost (AI)' },
                 ] as { key: keyof typeof licenseForm; label: string }[]).map(f => (
                   <label key={f.key} className="flex items-center gap-2.5 cursor-pointer">
                     <input
@@ -914,11 +919,12 @@ function LicensesTable({ rows, onManage }: { rows: LicenseRow[]; onManage: (r: L
   }
 
   const features: { key: keyof LicenseRow; label: string }[] = [
-    { key: 'feature_menu',         label: 'Menu' },
-    { key: 'feature_orders',       label: 'Orders' },
-    { key: 'feature_reservations', label: 'Reservations' },
-    { key: 'feature_customers',    label: 'Customers' },
-    { key: 'feature_analytics',    label: 'Analytics' },
+    { key: 'feature_menu',            label: 'Menu' },
+    { key: 'feature_orders',          label: 'Orders' },
+    { key: 'feature_reservations',    label: 'Reservations' },
+    { key: 'feature_customers',       label: 'Customers' },
+    { key: 'feature_analytics',       label: 'Analytics' },
+    { key: 'feature_revenue_boost',   label: 'Revenue Boost' },
   ]
 
   return (
