@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/trial-expiry-warning",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/score-customers",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cart-abandonment",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

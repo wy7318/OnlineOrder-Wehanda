@@ -107,6 +107,25 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
 
   // Tracks whether the currently-open ItemModal was triggered by an upsell prompt
   const upsellModalRef = useRef(false)
+  // Debounce timer for cart sync
+  const cartSyncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Sync cart state to DB (debounced) so the abandonment cron can detect it
+  useEffect(() => {
+    if (!customerSession?.access_token || !restaurant) return
+    clearTimeout(cartSyncTimer.current)
+    cartSyncTimer.current = setTimeout(() => {
+      fetch('/api/cart/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerSession.access_token}`,
+        },
+        body: JSON.stringify({ restaurant_id: restaurant.id, items: cartStore.items }),
+      }).catch(() => {})
+    }, 2000)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartStore.items, customerSession?.access_token, restaurant?.id])
   // Lazily load Stripe.js only when a publishable key is available
   const stripePromise = useMemo(
     () => stripePublishableKey ? loadStripe(stripePublishableKey) : null,
@@ -307,12 +326,28 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     })
   }
 
+  // Open the item modal and record an item_viewed event for logged-in customers
+  function openItemModal(item: typeof selectedItem) {
+    if (!item) return
+    setSelectedItem(item)
+    if (customerSession?.access_token && restaurant) {
+      fetch('/api/events/item-view', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerSession.access_token}`,
+        },
+        body: JSON.stringify({ restaurant_id: restaurant.id, menu_item_id: item.id }),
+      }).catch(() => {})
+    }
+  }
+
   function handleUpsellAdd(menuItemId: string) {
     const item = restaurant?.menu_items.find(i => i.id === menuItemId)
     if (!item) return
     upsellModalRef.current = true
     setCartOpen(false)
-    setSelectedItem(item)
+    openItemModal(item)
   }
 
   async function placeOrder() {
@@ -394,6 +429,14 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
     if (res.ok) {
       setOrderConfirmed({ orderId: data.id, orderNumber: data.order_number })
       cartStore.clearCart()
+      // Remove the persisted cart so the abandonment cron skips it
+      if (customerSession?.access_token && restaurant) {
+        fetch('/api/cart/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${customerSession.access_token}` },
+          body: JSON.stringify({ restaurant_id: restaurant.id, items: [] }),
+        }).catch(() => {})
+      }
       setCheckoutOpen(false)
       setCartOpen(false)
       setTipPercent(0)
@@ -638,7 +681,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                 </p>
                 {displayItems.length > 0 ? (
                   <div className="space-y-3">
-                    {displayItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
+                    {displayItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => openItemModal(item)} />)}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -682,7 +725,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   {activeSubcategory ? (
                     <div className="space-y-3">
                       {filteredItems(cat.id, activeSubcategory).map(item => (
-                        <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                        <MenuItemCard key={item.id} item={item} onClick={() => openItemModal(item)} />
                       ))}
                     </div>
                   ) : cat.subcategories.length > 0 ? (
@@ -693,7 +736,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                         <div key={sub.id} className="mb-6">
                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">{sub.name}</p>
                           <div className="space-y-3">
-                            {subItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />)}
+                            {subItems.map(item => <MenuItemCard key={item.id} item={item} onClick={() => openItemModal(item)} />)}
                           </div>
                         </div>
                       )
@@ -701,7 +744,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ slug: str
                   ) : (
                     <div className="space-y-3">
                       {catItems.filter(i => !i.subcategory_id).map(item => (
-                        <MenuItemCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                        <MenuItemCard key={item.id} item={item} onClick={() => openItemModal(item)} />
                       ))}
                     </div>
                   )}
