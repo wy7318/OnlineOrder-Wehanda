@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRestaurantContext } from '@/lib/utils/restaurant-auth'
 import {
   createCampaign, sendCampaignEmail, finalizeCampaign,
-  alreadySentCampaign,
+  alreadySentToCampaign,
 } from '@/lib/ai/campaigns'
 
 const CUSTOMER_LOOKBACK_DAYS = 90
@@ -41,30 +41,65 @@ export async function POST(request: Request) {
   const item = itemRes.data
   const restaurant = restaurantRes.data!
 
-  // Find customers who ordered from the same category in last 90 days
+  // Step 1: get all menu item IDs in the same category
+  const { data: siblingItems } = await admin
+    .from('menu_items')
+    .select('id')
+    .eq('restaurant_id', ctx.restaurantId)
+    .eq('category_id', item.category_id)
+
+  const siblingIds = (siblingItems ?? []).map(i => i.id as string)
+
   const since = new Date(Date.now() - CUSTOMER_LOOKBACK_DAYS * 86_400_000).toISOString()
 
-  const { data: recentOrderItems } = await admin
-    .from('order_items')
-    .select('orders!inner(customer_id, restaurant_id, created_at, status)')
-    .eq('category_id', item.category_id)
-    .eq('orders.restaurant_id', ctx.restaurantId)
-    .eq('orders.status', 'completed')
-    .gte('orders.created_at', since)
-    .limit(MAX_SENDS * 3)
+  // Step 2: find orders that contain items from that category
+  let customerIds: string[] = []
 
-  // Unique customer ids
-  const customerIds = Array.from(
-    new Set(
-      (recentOrderItems ?? [])
-        .map(oi => (oi.orders as unknown as { customer_id: string }).customer_id)
-        .filter(Boolean),
-    ),
-  ).slice(0, MAX_SENDS * 2)
+  if (siblingIds.length > 0) {
+    const { data: matchingOrderItems } = await admin
+      .from('order_items')
+      .select('order_id')
+      .in('menu_item_id', siblingIds)
+      .limit(MAX_SENDS * 5)
 
-  if (!customerIds.length) return NextResponse.json({ sent: 0, reason: 'no_eligible_customers' })
+    if (matchingOrderItems?.length) {
+      const orderIds = [...new Set(matchingOrderItems.map(oi => oi.order_id as string))]
 
-  // Fetch customer details
+      // Step 3: filter to completed orders in the lookback window for this restaurant
+      const { data: matchingOrders } = await admin
+        .from('orders')
+        .select('customer_id')
+        .eq('restaurant_id', ctx.restaurantId)
+        .eq('status', 'completed')
+        .gte('created_at', since)
+        .in('id', orderIds)
+        .not('customer_id', 'is', null)
+
+      customerIds = [
+        ...new Set((matchingOrders ?? []).map(o => o.customer_id as string)),
+      ].slice(0, MAX_SENDS * 2)
+    }
+  }
+
+  // Fallback: if no category match found, target all recent customers (broad launch)
+  if (!customerIds.length) {
+    const { data: recentOrders } = await admin
+      .from('orders')
+      .select('customer_id')
+      .eq('restaurant_id', ctx.restaurantId)
+      .eq('status', 'completed')
+      .gte('created_at', since)
+      .not('customer_id', 'is', null)
+      .limit(MAX_SENDS * 2)
+
+    customerIds = [...new Set((recentOrders ?? []).map(o => o.customer_id as string))]
+  }
+
+  if (!customerIds.length) {
+    return NextResponse.json({ sent: 0, reason: 'no_eligible_customers' })
+  }
+
+  // Step 4: fetch opted-in customers with emails
   const { data: customers } = await admin
     .from('customers')
     .select('id, first_name, last_name, name, email, marketing_opt_in')
@@ -73,7 +108,9 @@ export async function POST(request: Request) {
     .eq('marketing_opt_in', true)
     .not('email', 'is', null)
 
-  if (!customers?.length) return NextResponse.json({ sent: 0, reason: 'no_opted_in_customers' })
+  if (!customers?.length) {
+    return NextResponse.json({ sent: 0, reason: 'no_opted_in_customers' })
+  }
 
   const campaignId = await createCampaign({
     restaurantId: ctx.restaurantId,
@@ -86,12 +123,8 @@ export async function POST(request: Request) {
   const errors: string[] = []
 
   for (const customer of customers.slice(0, MAX_SENDS)) {
-    const alreadySent = await alreadySentCampaign({
-      restaurantId: ctx.restaurantId,
-      customerId: customer.id as string,
-      campaignType: 'new_item_launch',
-      withinDays: 30,
-    })
+    // Dedup per-item: prevent resending the same item announcement to the same customer
+    const alreadySent = await alreadySentToCampaign(campaignId, customer.id as string)
     if (alreadySent) continue
 
     const customerName = customer.first_name

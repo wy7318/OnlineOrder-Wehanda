@@ -24,14 +24,33 @@ export async function GET(request: Request) {
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
 
   const admin = createAdminClient()
+
+  // Fetch campaigns in window
   const { data: campaigns } = await admin
     .from('campaigns')
-    .select('campaign_type, sent_count, click_count, order_count, revenue_attributed, created_at')
+    .select('id, campaign_type, order_count, revenue_attributed, created_at')
     .eq('restaurant_id', ctx.restaurantId)
     .gte('created_at', since)
-    .order('created_at', { ascending: false })
 
   if (!campaigns?.length) return NextResponse.json({ campaigns: [], window_days: days })
+
+  const campaignIds = campaigns.map(c => c.id as string)
+
+  // Compute sent + click counts directly from campaign_contacts (source of truth)
+  const { data: contacts } = await admin
+    .from('campaign_contacts')
+    .select('campaign_id, status')
+    .in('campaign_id', campaignIds)
+
+  // Build per-campaign counts
+  const countMap = new Map<string, { sent: number; clicks: number }>()
+  for (const cc of contacts ?? []) {
+    const cid = cc.campaign_id as string
+    const existing = countMap.get(cid) ?? { sent: 0, clicks: 0 }
+    if (['sent', 'clicked', 'converted'].includes(cc.status as string)) existing.sent++
+    if (['clicked', 'converted'].includes(cc.status as string)) existing.clicks++
+    countMap.set(cid, existing)
+  }
 
   // Aggregate by campaign_type
   const grouped = new Map<string, {
@@ -46,6 +65,7 @@ export async function GET(request: Request) {
 
   for (const c of campaigns) {
     const type = c.campaign_type as string
+    const counts = countMap.get(c.id as string) ?? { sent: 0, clicks: 0 }
     const existing = grouped.get(type) ?? {
       label: TYPE_LABELS[type] ?? type,
       campaign_type: type,
@@ -55,8 +75,8 @@ export async function GET(request: Request) {
       revenue: 0,
       last_run: c.created_at as string,
     }
-    existing.sent += (c.sent_count as number) ?? 0
-    existing.clicks += (c.click_count as number) ?? 0
+    existing.sent += counts.sent
+    existing.clicks += counts.clicks
     existing.orders += (c.order_count as number) ?? 0
     existing.revenue += Number(c.revenue_attributed ?? 0)
     grouped.set(type, existing)

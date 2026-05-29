@@ -572,9 +572,23 @@ export default function MenuBuilderPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ menu_item_id: itemId }),
-        }).then(r => r.json()).then(d => {
-          if (d.sent > 0) toast(`Campaign launched — ${d.sent} customers notified!`, 'success')
-        }).catch(() => null)
+        })
+          .then(r => r.json())
+          .then(d => {
+            if (d.sent > 0) {
+              toast(`Campaign launched — ${d.sent} customer${d.sent !== 1 ? 's' : ''} notified!`, 'success')
+            } else if (d.reason === 'no_eligible_customers') {
+              toast('No past customers found for this category yet', 'info')
+            } else if (d.reason === 'no_opted_in_customers') {
+              toast('No customers with email & marketing opt-in found', 'info')
+            } else if (d.errors?.length) {
+              toast(`Campaign failed: ${d.errors[0]}`, 'error')
+              console.error('[launch-campaign] errors:', d.errors)
+            } else {
+              toast('All matching customers already received this announcement', 'info')
+            }
+          })
+          .catch(err => { console.error('[launch-campaign]', err); toast('Campaign email failed — check console', 'error') })
       }
 
       // Switch to options tab

@@ -101,12 +101,12 @@ export async function sendCampaignEmail({
 
   await sendEmail({ to: customerEmail, subject, html })
 
-  void admin
+  await admin
     .from('campaign_contacts')
     .update({ status: 'sent', subject })
     .eq('id', contact.id as string)
 
-  void restaurantSlug // used by caller for non-tracked fallback links if needed
+  void restaurantSlug
 
   return { subject, clickToken }
 }
@@ -114,7 +114,7 @@ export async function sendCampaignEmail({
 /** After all sends, update campaign with final sent count. */
 export async function finalizeCampaign(campaignId: string, sentCount: number): Promise<void> {
   const admin = createAdminClient()
-  void admin
+  await admin
     .from('campaigns')
     .update({ sent_count: sentCount, status: 'completed', updated_at: new Date().toISOString() })
     .eq('id', campaignId)
@@ -134,13 +134,39 @@ export async function alreadySentCampaign({
 }): Promise<boolean> {
   const admin = createAdminClient()
   const since = new Date(Date.now() - withinDays * 86_400_000).toISOString()
+
+  // Step 1: get campaign IDs of this type in the window (can't filter joined columns via .eq in JS client)
+  const { data: matchingCampaigns } = await admin
+    .from('campaigns')
+    .select('id')
+    .eq('restaurant_id', restaurantId)
+    .eq('campaign_type', campaignType)
+    .gte('created_at', since)
+
+  if (!matchingCampaigns?.length) return false
+
+  const campaignIds = matchingCampaigns.map(c => c.id as string)
+
+  // Step 2: check if this customer has a contact in any of those campaigns
   const { data } = await admin
     .from('campaign_contacts')
-    .select('id, campaigns!inner(campaign_type)')
-    .eq('restaurant_id', restaurantId)
+    .select('id')
     .eq('customer_id', customerId)
-    .gte('sent_at', since)
-    .eq('campaigns.campaign_type', campaignType)
+    .in('campaign_id', campaignIds)
+    .limit(1)
+    .maybeSingle()
+
+  return !!data
+}
+
+/** Check if a customer was already sent a specific campaign (by campaign ID, not type). */
+export async function alreadySentToCampaign(campaignId: string, customerId: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('campaign_contacts')
+    .select('id')
+    .eq('campaign_id', campaignId)
+    .eq('customer_id', customerId)
     .limit(1)
     .maybeSingle()
   return !!data

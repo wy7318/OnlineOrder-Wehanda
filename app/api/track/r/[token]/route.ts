@@ -19,12 +19,27 @@ export async function GET(
 
   if (!contact) return NextResponse.redirect(`${getEmailBaseUrl()}/`)
 
-  // Mark clicked once (idempotent — only update when status is 'sent')
+  // Mark clicked once — only transition from 'sent' to 'clicked'
   if (contact.status === 'sent') {
-    void admin
+    const now = new Date().toISOString()
+
+    // Update contact status
+    await admin
       .from('campaign_contacts')
-      .update({ status: 'clicked', clicked_at: new Date().toISOString() })
+      .update({ status: 'clicked', clicked_at: now })
       .eq('id', contact.id as string)
+
+    // Increment campaign click_count by recomputing from contacts (accurate, avoids race conditions)
+    const { count } = await admin
+      .from('campaign_contacts')
+      .select('id', { count: 'exact', head: true })
+      .eq('campaign_id', contact.campaign_id as string)
+      .in('status', ['clicked', 'converted'])
+
+    void admin
+      .from('campaigns')
+      .update({ click_count: (count ?? 0) + 1, updated_at: now })
+      .eq('id', contact.campaign_id as string)
   }
 
   // Redirect to restaurant page — attribution cron links orders placed after click
