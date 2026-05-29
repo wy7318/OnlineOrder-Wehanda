@@ -36,19 +36,23 @@ export async function GET(request: Request) {
 
   const campaignIds = campaigns.map(c => c.id as string)
 
-  // Compute sent + click counts directly from campaign_contacts (source of truth)
+  // Compute all stats directly from campaign_contacts (source of truth)
   const { data: contacts } = await admin
     .from('campaign_contacts')
-    .select('campaign_id, status')
+    .select('campaign_id, status, revenue_attributed')
     .in('campaign_id', campaignIds)
 
-  // Build per-campaign counts
-  const countMap = new Map<string, { sent: number; clicks: number }>()
+  // Build per-campaign counts from contact records
+  const countMap = new Map<string, { sent: number; clicks: number; orders: number; revenue: number }>()
   for (const cc of contacts ?? []) {
     const cid = cc.campaign_id as string
-    const existing = countMap.get(cid) ?? { sent: 0, clicks: 0 }
+    const existing = countMap.get(cid) ?? { sent: 0, clicks: 0, orders: 0, revenue: 0 }
     if (['sent', 'clicked', 'converted'].includes(cc.status as string)) existing.sent++
     if (['clicked', 'converted'].includes(cc.status as string)) existing.clicks++
+    if (cc.status === 'converted') {
+      existing.orders++
+      existing.revenue += Number(cc.revenue_attributed ?? 0)
+    }
     countMap.set(cid, existing)
   }
 
@@ -65,7 +69,7 @@ export async function GET(request: Request) {
 
   for (const c of campaigns) {
     const type = c.campaign_type as string
-    const counts = countMap.get(c.id as string) ?? { sent: 0, clicks: 0 }
+    const counts = countMap.get(c.id as string) ?? { sent: 0, clicks: 0, orders: 0, revenue: 0 }
     const existing = grouped.get(type) ?? {
       label: TYPE_LABELS[type] ?? type,
       campaign_type: type,
@@ -77,8 +81,8 @@ export async function GET(request: Request) {
     }
     existing.sent += counts.sent
     existing.clicks += counts.clicks
-    existing.orders += (c.order_count as number) ?? 0
-    existing.revenue += Number(c.revenue_attributed ?? 0)
+    existing.orders += counts.orders
+    existing.revenue += counts.revenue
     grouped.set(type, existing)
   }
 

@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     if (!order) continue
 
     // Tag order + mark contact converted
-    void admin
+    await admin
       .from('campaign_contacts')
       .update({
         status: 'converted',
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       })
       .eq('id', contact.id as string)
 
-    void admin
+    await admin
       .from('orders')
       .update({ campaign_contact_id: contact.id })
       .eq('id', order.id as string)
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       .eq('campaign_id', campaignId)
       .in('status', ['clicked', 'converted'])
 
-    void admin
+    await admin
       .from('campaigns')
       .update({
         order_count: ((campaign.order_count as number) ?? 0) + orders,

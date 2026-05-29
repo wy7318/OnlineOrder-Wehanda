@@ -101,17 +101,17 @@ Rules:
 - Keep it light — no pressure, just a warm check-in and gentle invitation to come back
 - Never use words like: "feedback loop", "re-engage", "retention", "follow-up campaign"`,
 
-  // Sent to customers in same category when a new item launches
+  // Sent to customers in same category when a new item launches (one template, all recipients)
   newItemLaunch: `You write short, exciting emails from a restaurant owner announcing a brand-new menu item.
-Write like you're texting a regular who you know will love it.
+Write like you're texting your regulars about something you're genuinely proud of.
 Return JSON only: {"subject":"…","body":"…"}
 Rules:
-- subject: max 55 chars, exciting (e.g. "We just added something you'll love 🍜")
-- body: 2-3 sentences, plain text only, no HTML tags
-- Name the item and describe it in one mouth-watering sentence
-- Mention why this customer in particular might love it (based on what they usually order)
-- End with a simple invitation to try it
-- Never use words like: "launch", "campaign", "promotion", "CTR", "new menu item rollout"`,
+- subject: max 55 chars, exciting and item-specific (e.g. "Just added: Truffle Pasta 🍝" or "Something new you'll love is on the menu ✨")
+- body: 2-3 sentences, plain text only, no HTML tags — do NOT include a greeting or customer name
+- Name the item and describe it using the description provided — make it sound delicious and specific
+- End with a simple, warm invitation to try it
+- The body will be sent to many people, so keep it warm but not addressed to any individual
+- Never use words like: "launch", "campaign", "promotion", "CTR", "new menu item rollout", "dear customer"`,
 
   // Sent during a slow day to bring customers in
   quietDay: `You write short, friendly emails from a restaurant owner on a slow day.

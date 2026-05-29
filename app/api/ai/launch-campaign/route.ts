@@ -5,6 +5,7 @@ import {
   createCampaign, sendCampaignEmail, finalizeCampaign,
   alreadySentToCampaign,
 } from '@/lib/ai/campaigns'
+import { haikuJSON, PROMPTS } from '@/lib/ai/haiku'
 
 const CUSTOMER_LOOKBACK_DAYS = 90
 const MAX_SENDS = 200
@@ -119,6 +120,25 @@ export async function POST(request: Request) {
     metadata: { menu_item_id, item_name: item.name },
   })
 
+  // Generate one AI template for this item — reused for all recipients
+  const emailTemplate = await haikuJSON<{ subject: string; body: string }>(
+    PROMPTS.newItemLaunch,
+    JSON.stringify({
+      restaurant: restaurant.name,
+      new_item: item.name,
+      item_description: item.description ?? '',
+    }),
+  )
+
+  const highlight = {
+    emoji: '✨',
+    label: 'Just added to our menu',
+    value: item.name as string,
+    note: item.description ? String(item.description).slice(0, 60) : undefined,
+    accentColor: '#0284c7',
+    bgColor: '#f0f9ff',
+  }
+
   let sent = 0
   const errors: string[] = []
 
@@ -141,21 +161,10 @@ export async function POST(request: Request) {
         restaurantSlug: restaurant.slug as string,
         customerName,
         promptKey: 'newItemLaunch',
-        promptContext: {
-          restaurant: restaurant.name,
-          customer: customerName,
-          new_item: item.name,
-          item_description: item.description ?? '',
-        },
+        promptContext: {},
         ctaLabel: `Try ${item.name as string}`,
-        highlight: {
-          emoji: '✨',
-          label: 'Just added to our menu',
-          value: item.name as string,
-          note: item.description ? String(item.description).slice(0, 60) : undefined,
-          accentColor: '#0284c7',
-          bgColor: '#f0f9ff',
-        },
+        highlight,
+        preGeneratedContent: emailTemplate,
       })
       sent++
     } catch (err) {

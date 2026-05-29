@@ -20,6 +20,8 @@ interface SendCampaignEmailParams {
   promptContext: object
   ctaLabel: string
   highlight?: EmailHighlight
+  /** Pre-generated AI content — skips haikuJSON call when provided (e.g. shared template for batch sends). */
+  preGeneratedContent?: { subject: string; body: string }
 }
 
 /** Build the click-tracked CTA URL for a campaign contact click_token. */
@@ -65,6 +67,7 @@ export async function sendCampaignEmail({
   promptContext,
   ctaLabel,
   highlight,
+  preGeneratedContent,
 }: SendCampaignEmailParams): Promise<{ subject: string; clickToken: string }> {
   const admin = createAdminClient()
 
@@ -85,7 +88,7 @@ export async function sendCampaignEmail({
 
   const clickToken = contact.click_token as string
 
-  const { subject, body: msgBody } = await haikuJSON<{ subject: string; body: string }>(
+  const { subject, body: msgBody } = preGeneratedContent ?? await haikuJSON<{ subject: string; body: string }>(
     PROMPTS[promptKey],
     JSON.stringify(promptContext),
   )
@@ -187,6 +190,78 @@ export async function getAutomationSettings(restaurantId: string) {
     quiet_day_enabled: data?.quiet_day_enabled ?? true,
     milestone_enabled: data?.milestone_enabled ?? true,
     new_item_enabled: data?.new_item_enabled ?? true,
+  }
+}
+
+/**
+ * Real-time attribution: when an order is completed, check if the customer
+ * clicked a campaign email within the attribution window and mark it converted.
+ * Call this from the order-completion handler so stats update immediately.
+ */
+export async function attributeOrderToCampaign({
+  restaurantId,
+  customerId,
+  orderId,
+  orderTotal,
+}: {
+  restaurantId: string
+  customerId: string
+  orderId: string
+  orderTotal: number
+}): Promise<void> {
+  const admin = createAdminClient()
+  const WINDOW_DAYS = 7
+  const windowAgo = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString()
+  const now = new Date().toISOString()
+
+  // Find the most recent clicked contact for this customer within the attribution window
+  const { data: contact } = await admin
+    .from('campaign_contacts')
+    .select('id, campaign_id')
+    .eq('customer_id', customerId)
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'clicked')
+    .gte('clicked_at', windowAgo)
+    .order('clicked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!contact) return
+
+  // Mark contact converted
+  await admin
+    .from('campaign_contacts')
+    .update({
+      status: 'converted',
+      converted_at: now,
+      order_id: orderId,
+      revenue_attributed: orderTotal,
+    })
+    .eq('id', contact.id as string)
+
+  // Tag the order with the campaign contact (only if not already tagged)
+  await admin
+    .from('orders')
+    .update({ campaign_contact_id: contact.id })
+    .eq('id', orderId)
+    .is('campaign_contact_id', null)
+
+  // Update campaign aggregates
+  const { data: campaign } = await admin
+    .from('campaigns')
+    .select('order_count, revenue_attributed')
+    .eq('id', contact.campaign_id as string)
+    .maybeSingle()
+
+  if (campaign) {
+    await admin
+      .from('campaigns')
+      .update({
+        order_count: ((campaign.order_count as number) ?? 0) + 1,
+        revenue_attributed: ((campaign.revenue_attributed as number) ?? 0) + orderTotal,
+        updated_at: now,
+      })
+      .eq('id', contact.campaign_id as string)
   }
 }
 

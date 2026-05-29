@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { attributeOrderToCampaign } from '@/lib/ai/campaigns'
 
 export async function PATCH(
   request: Request,
@@ -46,9 +47,15 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Award loyalty points when order is completed (only once)
+  // Award loyalty points and attribute campaign revenue when order is completed (only once)
   if (status === 'completed' && order.status !== 'completed' && order.customer_id) {
     awardLoyaltyPoints(supabase, order).catch(() => {})
+    attributeOrderToCampaign({
+      restaurantId: order.restaurant_id as string,
+      customerId: order.customer_id as string,
+      orderId: order.id as string,
+      orderTotal: (order.subtotal as number) ?? 0,
+    }).catch(() => {})
   }
 
   // Refund redeemed points when order is cancelled (only once, only if points were used)
