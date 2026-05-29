@@ -22,7 +22,7 @@ export async function PATCH(
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, restaurant_id, customer_id, customer_user_id, status, subtotal, loyalty_points_redeemed')
+    .select('id, restaurant_id, customer_id, customer_user_id, status, subtotal, total_amount, loyalty_points_redeemed')
     .eq('id', id)
     .single()
 
@@ -54,7 +54,7 @@ export async function PATCH(
       restaurantId: order.restaurant_id as string,
       customerId: order.customer_id as string,
       orderId: order.id as string,
-      orderTotal: (order.subtotal as number) ?? 0,
+      orderTotal: (order.total_amount as number) ?? 0,
     }).catch(() => {})
   }
 
