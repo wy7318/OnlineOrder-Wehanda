@@ -3,8 +3,9 @@ import './globals.css'
 import { ToastProvider } from '@/components/ui/Toast'
 
 export const metadata: Metadata = {
-  title: 'Wehanda — Restaurant Online Ordering SaaS',
-  description: 'The all-in-one online ordering platform for restaurants.',
+  title: 'Wehanda — Restaurant Online Ordering & AI Marketing Software',
+  description:
+    'Accept online orders with zero commission. AI email campaigns, loyalty programs, and a custom ordering page for your restaurant — from $69/month.',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Wehanda' },
 }
 
