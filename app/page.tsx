@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Check, ChevronRight, ArrowRight } from 'lucide-react'
 import NavBar from '@/components/landing/NavBar'
 import DashboardPreview from '@/components/landing/DashboardPreview'
+import ScrollAnimations from '@/components/landing/ScrollAnimations'
 
 export const revalidate = 86400
 
@@ -105,6 +106,21 @@ const AI_CAMPAIGNS = [
   { name: 'After-Order Follow-up', desc: 'A warm check-in sent 3 days after their meal.' },
 ]
 
+const AI_EXTRAS = [
+  {
+    title: 'Customer Scoring',
+    desc: "AI labels every customer by churn risk, lifetime value, and order frequency — so you know who needs attention and who's loyal.",
+  },
+  {
+    title: 'Menu Insights',
+    desc: "Spot items people view but don't order. Get plain-English tips: update the photo, rewrite the description, adjust the price.",
+  },
+  {
+    title: 'AI Website Copy',
+    desc: 'Generate SEO-optimized hero, about, and meta content based on your real menu, location, and customer data.',
+  },
+]
+
 const BASIC_FEATURES = [
   'Custom ordering page (pickup, dine-in, delivery)',
   'Menu builder with categories, modifiers & photos',
@@ -172,6 +188,7 @@ export default async function LandingPage() {
 
       <div className="min-h-screen">
         <NavBar />
+        <ScrollAnimations />
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <section
@@ -179,19 +196,19 @@ export default async function LandingPage() {
           style={{ background: 'linear-gradient(135deg, #0255c4 0%, #037FFC 60%, #3b9fff 100%)' }}
         >
           <div className="max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-2 border border-white/25 text-white/70 text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full mb-10">
+            <div className="inline-flex items-center gap-2 border border-white/25 text-white/70 text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full mb-10 hero-anim hero-d1">
               Restaurant Platform &nbsp;·&nbsp; No Commissions
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black text-white leading-[1.05] tracking-tight max-w-3xl mb-7">
+            <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black text-white leading-[1.05] tracking-tight max-w-3xl mb-7 hero-anim hero-d2">
               {heroHeadline}
             </h1>
 
-            <p className="text-lg sm:text-xl text-white/75 max-w-2xl mb-10 leading-relaxed">
+            <p className="text-lg sm:text-xl text-white/75 max-w-2xl mb-10 leading-relaxed hero-anim hero-d3">
               {heroSub}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 mb-20">
+            <div className="flex flex-col sm:flex-row gap-4 mb-20 hero-anim hero-d4">
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center gap-2 bg-white text-brand-600 hover:bg-brand-50 font-bold px-8 py-4 rounded-xl text-base transition shadow-lg shadow-brand-900/20"
@@ -207,7 +224,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/20">
+            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/20 hero-anim hero-d5">
               {[
                 { val: '$0', label: 'Commission per order' },
                 { val: '20 min', label: 'Setup to first order' },
@@ -225,10 +242,17 @@ export default async function LandingPage() {
         {/* ── PROBLEM ──────────────────────────────────────────────────── */}
         <section className="py-24 px-6 bg-white border-b border-gray-100">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-8">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-8"
+            >
               The problem
             </p>
-            <h2 className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight max-w-3xl mb-16">
+            <h2
+              data-animate="fade-up"
+              style={{ transitionDelay: '120ms' }}
+              className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight max-w-3xl mb-16"
+            >
               Third-party apps are making your restaurant work for them.
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-200">
@@ -245,8 +269,13 @@ export default async function LandingPage() {
                   stat: '100%',
                   desc: 'Of your brand handed to a platform that lists your competitors right next to you.',
                 },
-              ].map(p => (
-                <div key={p.stat} className="py-8 md:py-0 md:px-10 first:md:pl-0 last:md:pr-0">
+              ].map((p, i) => (
+                <div
+                  key={p.stat}
+                  data-animate="fade-up"
+                  style={{ transitionDelay: `${i * 160}ms` }}
+                  className="py-8 md:py-0 md:px-10 first:md:pl-0 last:md:pr-0"
+                >
                   <p className="text-6xl font-black text-brand-500 mb-4 leading-none">{p.stat}</p>
                   <p className="text-gray-600 leading-relaxed text-sm">{p.desc}</p>
                 </div>
@@ -258,33 +287,61 @@ export default async function LandingPage() {
         {/* ── PLATFORM DEMO ────────────────────────────────────────────── */}
         <section className="py-24 px-6 bg-brand-50">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-4 text-center">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-4 text-center"
+            >
               See it in action
             </p>
-            <h2 className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight text-center mb-4">
+            <h2
+              data-animate="fade-up"
+              style={{ transitionDelay: '100ms' }}
+              className="text-4xl sm:text-5xl font-black text-gray-900 leading-tight text-center mb-4"
+            >
               Your dashboard, live.
             </h2>
-            <p className="text-gray-500 text-lg text-center mb-12 max-w-xl mx-auto leading-relaxed">
+            <p
+              data-animate="fade-up"
+              style={{ transitionDelay: '200ms' }}
+              className="text-gray-500 text-lg text-center mb-12 max-w-xl mx-auto leading-relaxed"
+            >
               Real-time orders, AI campaigns, customer profiles, and analytics — all in one clean interface.
             </p>
-            <DashboardPreview />
+            <div data-animate="fade-up" style={{ transitionDelay: '300ms' }}>
+              <DashboardPreview />
+            </div>
           </div>
         </section>
 
         {/* ── CORE PLATFORM ────────────────────────────────────────────── */}
         <section className="py-24 px-6 bg-brand-900">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-6">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-6"
+            >
               The platform
             </p>
-            <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight max-w-2xl mb-5">
+            <h2
+              data-animate="fade-up"
+              style={{ transitionDelay: '100ms' }}
+              className="text-4xl sm:text-5xl font-black text-white leading-tight max-w-2xl mb-5"
+            >
               Everything your restaurant needs. Nothing extra.
             </h2>
-            <p className="text-brand-200 text-lg mb-14 max-w-xl leading-relaxed">
+            <p
+              data-animate="fade-up"
+              style={{ transitionDelay: '200ms' }}
+              className="text-brand-200 text-lg mb-14 max-w-xl leading-relaxed"
+            >
               Purpose-built for restaurant owners — not enterprise chains, not generic e-commerce stores.
             </p>
 
-            <div className="border border-brand-800 rounded-2xl overflow-hidden">
+            <div
+              data-animate="fade-up"
+              style={{ transitionDelay: '180ms' }}
+              className="border border-brand-800 rounded-2xl overflow-hidden"
+            >
               {PLATFORM_FEATURES.map((f, i) => (
                 <div
                   key={f.n}
@@ -308,11 +365,18 @@ export default async function LandingPage() {
         {/* ── AI REVENUE BOOST ─────────────────────────────────────────── */}
         <section className="py-24 px-6 bg-brand-600">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-white/50 mb-6">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-white/50 mb-6"
+            >
               Revenue Boost · $149/month
             </p>
             <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 mb-14">
-              <div className="lg:w-5/12">
+              <div
+                data-animate="fade-left"
+                style={{ transitionDelay: '80ms' }}
+                className="lg:w-5/12"
+              >
                 <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-6">
                   AI that runs your marketing while you run your kitchen.
                 </h2>
@@ -328,7 +392,11 @@ export default async function LandingPage() {
                 </Link>
               </div>
 
-              <div className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div
+                data-animate="fade-right"
+                style={{ transitionDelay: '200ms' }}
+                className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-3"
+              >
                 {AI_CAMPAIGNS.map(c => (
                   <div
                     key={c.name}
@@ -346,25 +414,20 @@ export default async function LandingPage() {
         {/* ── AI EXTRAS ────────────────────────────────────────────────── */}
         <section className="py-20 px-6 bg-white border-b border-gray-100">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-12">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-12"
+            >
               Also included with Revenue Boost
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
-              {[
-                {
-                  title: 'Customer Scoring',
-                  desc: "AI labels every customer by churn risk, lifetime value, and order frequency — so you know who needs attention and who's loyal.",
-                },
-                {
-                  title: 'Menu Insights',
-                  desc: "Spot items people view but don't order. Get plain-English tips: update the photo, rewrite the description, adjust the price.",
-                },
-                {
-                  title: 'AI Website Copy',
-                  desc: 'Generate SEO-optimized hero, about, and meta content based on your real menu, location, and customer data.',
-                },
-              ].map(f => (
-                <div key={f.title} className="border-t-2 border-brand-500 pt-6">
+              {AI_EXTRAS.map((f, i) => (
+                <div
+                  key={f.title}
+                  data-animate="fade-up"
+                  style={{ transitionDelay: `${i * 160}ms` }}
+                  className="border-t-2 border-brand-500 pt-6"
+                >
                   <h3 className="text-lg font-bold text-gray-900 mb-3">{f.title}</h3>
                   <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
                 </div>
@@ -376,19 +439,34 @@ export default async function LandingPage() {
         {/* ── PRICING ──────────────────────────────────────────────────── */}
         <section className="py-24 px-6 bg-brand-50" id="pricing">
           <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-4 text-center">
+            <p
+              data-animate="fade-up"
+              className="text-xs font-bold tracking-widest uppercase text-brand-400 mb-4 text-center"
+            >
               Pricing
             </p>
-            <h2 className="text-4xl sm:text-5xl font-black text-gray-900 text-center mb-4">
+            <h2
+              data-animate="fade-up"
+              style={{ transitionDelay: '100ms' }}
+              className="text-4xl sm:text-5xl font-black text-gray-900 text-center mb-4"
+            >
               Simple, honest pricing.
             </h2>
-            <p className="text-gray-500 text-lg text-center mb-16">
+            <p
+              data-animate="fade-up"
+              style={{ transitionDelay: '200ms' }}
+              className="text-gray-500 text-lg text-center mb-16"
+            >
               No setup fees. No per-order commissions. No hidden costs.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
               {/* Basic */}
-              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 flex flex-col shadow-sm">
+              <div
+                data-animate="fade-right"
+                style={{ transitionDelay: '120ms' }}
+                className="bg-white border-2 border-gray-200 rounded-2xl p-8 flex flex-col shadow-sm"
+              >
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
                   Basic
                 </p>
@@ -417,8 +495,9 @@ export default async function LandingPage() {
 
               {/* Revenue Boost */}
               <div
+                data-animate="fade-left"
+                style={{ transitionDelay: '240ms', background: 'linear-gradient(145deg, #0255c4 0%, #037FFC 100%)' }}
                 className="rounded-2xl p-8 flex flex-col relative overflow-hidden shadow-lg shadow-brand-200/40"
-                style={{ background: 'linear-gradient(145deg, #0255c4 0%, #037FFC 100%)' }}
               >
                 <div className="absolute top-5 right-5 bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wide uppercase border border-white/30">
                   Most Popular
@@ -461,14 +540,23 @@ export default async function LandingPage() {
           style={{ background: 'linear-gradient(135deg, #0255c4 0%, #037FFC 100%)' }}
         >
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl sm:text-5xl font-black text-white mb-6 leading-tight">
+            <h2
+              data-animate="fade-up"
+              className="text-4xl sm:text-5xl font-black text-white mb-6 leading-tight"
+            >
               Your menu could be live tonight.
             </h2>
-            <p className="text-white/70 text-lg mb-10 leading-relaxed">
+            <p
+              data-animate="fade-up"
+              style={{ transitionDelay: '120ms' }}
+              className="text-white/70 text-lg mb-10 leading-relaxed"
+            >
               Setup takes 20 minutes. Your first order keeps every dollar.
             </p>
             <Link
               href="/register"
+              data-animate="scale-up"
+              style={{ transitionDelay: '260ms' }}
               className="inline-flex items-center gap-2 bg-white text-brand-600 hover:bg-brand-50 font-bold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-brand-900/20"
             >
               Create your restaurant <ChevronRight size={20} />
