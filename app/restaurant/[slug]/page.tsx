@@ -16,17 +16,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const admin = createAdminClient()
   const { data: r } = await admin
-    .from('restaurants').select('id, name, description, cuisine_types').eq('slug', slug).maybeSingle()
+    .from('restaurants').select('id, name, description, cuisine_types, address, cover_image_url').eq('slug', slug).maybeSingle()
   if (!r) return {}
   const { data: ws } = await admin
-    .from('restaurant_website_settings').select('seo_meta_description, seo_keywords')
+    .from('restaurant_website_settings').select('seo_meta_description, seo_keywords, accent_color')
     .eq('restaurant_id', r.id as string).maybeSingle()
+  const title = r.name as string
   const description = (ws?.seo_meta_description as string | null) ?? (r.description as string | null) ?? `Order online from ${r.name}`
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/restaurant/${slug}`
+  const coverImage = r.cover_image_url as string | null
+
   return {
-    title: r.name as string,
+    title,
     description,
     keywords: (ws?.seo_keywords as string | null) ?? (r.cuisine_types as string[] | null)?.join(', '),
-    openGraph: { title: r.name as string, description, type: 'website' },
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      ...(coverImage ? { images: [{ url: coverImage, width: 1200, height: 630, alt: title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(coverImage ? { images: [coverImage] } : {}),
+    },
   }
 }
 
@@ -110,12 +127,44 @@ export default async function RestaurantHomePage({ params }: { params: Promise<{
     } : null,
   }
 
-  if (template === 'bold') return <BoldTemplate {...props} />
-  if (template === 'minimal') return <MinimalTemplate {...props} />
-  if (template === 'classic') return <ClassicTemplate {...props} />
-  if (template === 'noir') return <NoirTemplate {...props} />
-  if (template === 'organic') return <OrganicTemplate {...props} />
-  if (template === 'electric') return <ElectricTemplate {...props} />
-  if (template === 'zen') return <ZenTemplate {...props} />
-  return <ModernTemplate {...props} />
+  // JSON-LD LocalBusiness structured data for Google rich results
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Restaurant',
+    name: props.restaurant.name,
+    description: props.restaurant.description ?? undefined,
+    address: props.restaurant.address ? { '@type': 'PostalAddress', streetAddress: props.restaurant.address } : undefined,
+    telephone: props.restaurant.phone ?? undefined,
+    email: props.restaurant.email ?? undefined,
+    url: `${siteUrl}/restaurant/${slug}`,
+    image: props.restaurant.cover_image_url ?? undefined,
+    servesCuisine: props.restaurant.cuisine_types ?? undefined,
+    hasMenu: `${siteUrl}/restaurant/${slug}/menu`,
+    potentialAction: {
+      '@type': 'OrderAction',
+      target: `${siteUrl}/restaurant/${slug}/menu`,
+    },
+  }
+
+  const Template = (() => {
+    if (template === 'bold') return BoldTemplate
+    if (template === 'minimal') return MinimalTemplate
+    if (template === 'classic') return ClassicTemplate
+    if (template === 'noir') return NoirTemplate
+    if (template === 'organic') return OrganicTemplate
+    if (template === 'electric') return ElectricTemplate
+    if (template === 'zen') return ZenTemplate
+    return ModernTemplate
+  })()
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Template {...props} />
+    </>
+  )
 }

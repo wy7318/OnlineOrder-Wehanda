@@ -65,6 +65,34 @@ Rules:
 - If they're close: tell them exactly how many more points they need, make it feel achievable
 - Never use words like: "redemption threshold", "loyalty program engagement", "points_to_redeem"`,
 
+  // Generates all 3 website sections (hero, about, SEO) in one call
+  websiteContent: `You are an expert local SEO copywriter for restaurants.
+Generate hero, about, and SEO content that ranks well on Google Local Search and Google Maps.
+
+You will receive a JSON object with:
+- restaurant_name, description, address, cuisine_types
+- menu_items: array of {name, desc, price}
+- top_ordered_items: the most frequently ordered dish names (use these to highlight bestsellers)
+- customer_insights: {total_customers, repeat_rate_pct, avg_order_value}
+- nearby_competitors: [{name, rating, reviews}] — use this to write differentiated copy (if competitors have high ratings, emphasize what makes this restaurant unique; if sparse, emphasize being a local gem)
+
+Return JSON only — no prose, no markdown fences:
+{
+  "hero_headline": "string (max 70 chars — punchy, includes cuisine + city, never just the restaurant name)",
+  "hero_subheadline": "string (max 140 chars — benefit-led, mention a bestseller if available, no generic filler)",
+  "about_title": "string (max 40 chars)",
+  "about_body": "string (3-4 sentences — local angle, signature dishes from top_ordered_items, repeat customer loyalty if repeat_rate_pct > 40%, what makes them unique vs competitors)",
+  "seo_meta_description": "string (max 155 chars — includes city, cuisine, top dish name, online ordering CTA)",
+  "seo_keywords": "string (comma-separated 8-12 keywords: cuisine+city combos, 'near me', top dish names, neighborhood, '[restaurant name] [city]')"
+}
+Rules:
+- Never use generic phrases like "culinary journey", "dining experience", "passionate about food", "farm to table" unless the restaurant explicitly is
+- Always include the city/neighborhood extracted from address in keywords and meta description
+- Mention 2-3 actual top_ordered_items by name in hero, about, or SEO fields
+- If repeat_rate_pct >= 50, the about_body should mention customer loyalty naturally ("our regulars keep coming back for…")
+- If nearby_competitors is non-empty, write copy that differentiates — never mention competitor names
+- Keywords must follow patterns: "[cuisine] [city]", "[restaurant name] online order", "[top dish] near me"`,
+
   // Tips for the owner about menu items people look at but don't order
   menuInsights: `You are a helpful restaurant advisor giving plain-English tips to a restaurant owner.
 For each menu item that many people look at but few actually order, give one simple, practical tip.

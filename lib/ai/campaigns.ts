@@ -175,21 +175,41 @@ export async function alreadySentToCampaign(campaignId: string, customerId: stri
   return !!data
 }
 
-/** Load automation settings for a restaurant (defaults to all enabled if not set). */
+/** Load automation settings for a restaurant (defaults to all enabled if not set).
+ *  Returns all-false if the restaurant does not have the Revenue Boost license. */
 export async function getAutomationSettings(restaurantId: string) {
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('campaign_automation_settings')
-    .select('*')
-    .eq('restaurant_id', restaurantId)
-    .maybeSingle()
+
+  // Check Revenue Boost license first — no license means no campaign emails
+  const [{ data: license }, { data: settings }] = await Promise.all([
+    admin
+      .from('restaurant_licenses')
+      .select('feature_revenue_boost')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle(),
+    admin
+      .from('campaign_automation_settings')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle(),
+  ])
+
+  if (!license?.feature_revenue_boost) {
+    return {
+      birthday_enabled: false,
+      after_order_enabled: false,
+      quiet_day_enabled: false,
+      milestone_enabled: false,
+      new_item_enabled: false,
+    }
+  }
 
   return {
-    birthday_enabled: data?.birthday_enabled ?? true,
-    after_order_enabled: data?.after_order_enabled ?? true,
-    quiet_day_enabled: data?.quiet_day_enabled ?? true,
-    milestone_enabled: data?.milestone_enabled ?? true,
-    new_item_enabled: data?.new_item_enabled ?? true,
+    birthday_enabled: settings?.birthday_enabled ?? true,
+    after_order_enabled: settings?.after_order_enabled ?? true,
+    quiet_day_enabled: settings?.quiet_day_enabled ?? true,
+    milestone_enabled: settings?.milestone_enabled ?? true,
+    new_item_enabled: settings?.new_item_enabled ?? true,
   }
 }
 

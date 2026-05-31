@@ -22,6 +22,17 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient()
 
+  // Revenue Boost required — block non-licensed restaurants
+  const { data: license } = await admin
+    .from('restaurant_licenses')
+    .select('feature_revenue_boost')
+    .eq('restaurant_id', ctx.restaurantId)
+    .maybeSingle()
+
+  if (!license?.feature_revenue_boost) {
+    return NextResponse.json({ error: 'Revenue Boost required' }, { status: 403 })
+  }
+
   const [itemRes, restaurantRes] = await Promise.all([
     admin
       .from('menu_items')

@@ -365,6 +365,7 @@ export default function MenuBuilderPage() {
   const supabase = createClient()
 
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
+  const [hasRevenueBoost, setHasRevenueBoost] = useState(false)
   const [categories, setCategories] = useState<CatWithSubs[]>([])
   const [items, setItems] = useState<ItemWithTags[]>([])
   const [tags, setTags] = useState<TagType[]>([])
@@ -449,6 +450,7 @@ export default function MenuBuilderPage() {
     const r = await res.json()
     if (!r?.id) return
     setRestaurantId(r.id)
+    setHasRevenueBoost(r.restaurant_licenses?.feature_revenue_boost ?? false)
 
     const [{ data: cats }, { data: subs }, { data: its }, { data: tgs }, { data: itemTags }] = await Promise.all([
       supabase.from('categories').select('*').eq('restaurant_id', r.id).order('display_order'),
@@ -1372,18 +1374,33 @@ export default function MenuBuilderPage() {
 
                   {/* Campaign launch toggle — only for new items */}
                   {!editingItem && (
-                    <div className="flex items-start gap-3 py-3 px-3 bg-brand-50 rounded-xl border border-brand-100">
-                      <Toggle
-                        checked={itemForm.launch_campaign}
-                        onChange={v => setItemForm(f => ({ ...f, launch_campaign: v }))}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-brand-800">✨ Announce to past customers</p>
-                        <p className="text-xs text-brand-600 leading-snug mt-0.5">
-                          AI will email customers who ordered from this category before — letting them know about the new dish
-                        </p>
+                    hasRevenueBoost ? (
+                      <div className="flex items-start gap-3 py-3 px-3 bg-brand-50 rounded-xl border border-brand-100">
+                        <Toggle
+                          checked={itemForm.launch_campaign}
+                          onChange={v => setItemForm(f => ({ ...f, launch_campaign: v }))}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-brand-800">✨ Announce to past customers</p>
+                          <p className="text-xs text-brand-600 leading-snug mt-0.5">
+                            AI will email customers who ordered from this category before — letting them know about the new dish
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-start gap-3 py-3 px-3 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="w-8 h-5 rounded-full bg-gray-200 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                            ✨ Announce to past customers
+                            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Revenue Boost</span>
+                          </p>
+                          <p className="text-xs text-gray-400 leading-snug mt-0.5">
+                            Upgrade to Revenue Boost to email past customers when you add a new dish
+                          </p>
+                        </div>
+                      </div>
+                    )
                   )}
                 </>
               ) : (

@@ -454,7 +454,7 @@ CREATE TABLE public.restaurant_website_settings (
   google_analytics_id text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  template text NOT NULL DEFAULT 'modern'::text CHECK (template = ANY (ARRAY['modern'::text, 'bold'::text, 'minimal'::text, 'classic'::text])),
+  template text NOT NULL DEFAULT 'modern'::text CHECK (template = ANY (ARRAY['modern'::text, 'bold'::text, 'minimal'::text, 'classic'::text, 'noir'::text, 'organic'::text, 'electric'::text, 'zen'::text])),
   CONSTRAINT restaurant_website_settings_pkey PRIMARY KEY (restaurant_id),
   CONSTRAINT restaurant_website_settings_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
 );

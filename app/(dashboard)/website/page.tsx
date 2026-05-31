@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Globe, Palette, Image as ImageIcon, FileText, Eye, Save, Loader2, Plus, X, Check, Upload, Layout } from 'lucide-react'
+import { Globe, Palette, Image as ImageIcon, FileText, Eye, Save, Loader2, Plus, X, Check, Upload, Layout, Sparkles, Lock } from 'lucide-react'
 
 type TemplateId = 'modern' | 'bold' | 'minimal' | 'classic' | 'noir' | 'organic' | 'electric' | 'zen'
 
@@ -24,6 +24,7 @@ interface WebsiteSettings {
 interface RestaurantInfo {
   name: string
   slug: string
+  hasRevenueBoost: boolean
 }
 
 const ACCENT_PRESETS = [
@@ -208,6 +209,7 @@ export default function WebsitePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [newGalleryUrl, setNewGalleryUrl] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -219,7 +221,11 @@ export default function WebsitePage() {
       fetch('/api/restaurant/current').then(r => r.json()),
     ]).then(([ws, rest]) => {
       setSettings(ws ?? {})
-      if (rest?.name) setRestaurant({ name: rest.name, slug: rest.slug })
+      if (rest?.name) setRestaurant({
+        name: rest.name,
+        slug: rest.slug,
+        hasRevenueBoost: rest.restaurant_licenses?.feature_revenue_boost ?? false,
+      })
     }).finally(() => setLoading(false))
   }, [])
 
@@ -241,6 +247,25 @@ export default function WebsitePage() {
       saveTimer.current = setTimeout(() => setSaved(false), 3000)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function generateContent() {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/ai/website-content', { method: 'POST' })
+      if (!res.ok) return
+      const data = await res.json()
+      update({
+        hero_headline: data.hero_headline ?? settings.hero_headline,
+        hero_subheadline: data.hero_subheadline ?? settings.hero_subheadline,
+        about_title: data.about_title ?? settings.about_title,
+        about_body: data.about_body ?? settings.about_body,
+        seo_meta_description: data.seo_meta_description ?? settings.seo_meta_description,
+        seo_keywords: data.seo_keywords ?? settings.seo_keywords,
+      })
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -287,7 +312,7 @@ export default function WebsitePage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Website</h1>
           <p className="text-sm text-gray-500 mt-0.5">Customize your public restaurant site — template, design, content, and SEO.</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
           {previewUrl && (
             <a href={previewUrl} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">
@@ -301,6 +326,39 @@ export default function WebsitePage() {
           </button>
         </div>
       </div>
+
+      {/* AI Generate banner — Revenue Boost gated */}
+      {restaurant?.hasRevenueBoost ? (
+        <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles size={17} className="text-violet-600" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">AI Website Generator</p>
+              <p className="text-xs text-gray-500 mt-0.5">Instantly writes your Hero, About, and SEO sections based on your menu, location, and customer data. Optimized for Google local search.</p>
+            </div>
+          </div>
+          <button
+            onClick={generateContent}
+            disabled={generating}
+            className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition"
+          >
+            {generating ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+            {generating ? 'Generating…' : 'Generate with AI'}
+          </button>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+            <Lock size={16} className="text-gray-400" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-700 text-sm">AI Website Generator <span className="ml-1 text-[11px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Revenue Boost</span></p>
+            <p className="text-xs text-gray-500 mt-0.5">Upgrade to Revenue Boost to auto-generate SEO-optimized website content based on your menu and location.</p>
+          </div>
+        </div>
+      )}
 
       {/* Template selector */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
