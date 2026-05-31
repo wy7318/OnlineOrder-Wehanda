@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, ClipboardList, Settings,
   ShoppingBag, LogOut, Shield, CalendarDays, Users, Store,
-  ChevronRight, BarChart2, MoreHorizontal, Zap,
+  ChevronRight, BarChart2, MoreHorizontal, Zap, Globe,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/helpers'
@@ -41,6 +41,7 @@ const MOBILE_SECONDARY: NavItem[] = [
   { href: '/menu',            label: 'Menu Builder',      icon: UtensilsCrossed, feature: 'feature_menu' },
   { href: '/analytics',       label: 'Analytics',         icon: BarChart2,       feature: 'feature_analytics' },
   { href: '/revenue-boost',   label: 'Revenue Boost',     icon: Zap,             feature: 'feature_revenue_boost' },
+  { href: '/website',         label: 'Website',           icon: Globe },
   { href: '/setup',           label: 'Restaurant Setup',  icon: Settings },
 ]
 
@@ -53,6 +54,7 @@ const DESKTOP_NAV: NavItem[] = [
   { href: '/customers',       label: 'Customers',        icon: Users,            feature: 'feature_customers' },
   { href: '/analytics',       label: 'Analytics',        icon: BarChart2,        feature: 'feature_analytics' },
   { href: '/revenue-boost',   label: 'Revenue Boost',    icon: Zap,              feature: 'feature_revenue_boost' },
+  { href: '/website',         label: 'Website',          icon: Globe },
   { href: '/setup',           label: 'Restaurant Setup', icon: Settings },
 ]
 

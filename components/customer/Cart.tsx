@@ -13,9 +13,10 @@ interface CartProps {
   taxRate: number
   restaurantId?: string
   onUpsellAdd?: (menuItemId: string) => void
+  accent?: string
 }
 
-export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }: CartProps) {
+export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd, accent = '#037FFC' }: CartProps) {
   const { items, updateQuantity, removeItem, subtotal, addItem } = useCartStore()
   const [upsellItems, setUpsellItems] = useState<UpsellItem[]>([])
 
@@ -68,8 +69,8 @@ export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }:
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mb-3">
-          <ShoppingBag size={24} className="text-brand-300" />
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: accent + '18' }}>
+          <ShoppingBag size={24} style={{ color: accent }} />
         </div>
         <p className="font-bold text-gray-700 text-sm mb-1">Your cart is empty</p>
         <p className="text-xs text-gray-400">Add items from the menu to get started</p>
@@ -108,19 +109,19 @@ export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }:
                 <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-brand-500 transition rounded"
+                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:opacity-70 transition rounded"
                   >
                     <Minus size={12} />
                   </button>
                   <span className="w-5 text-center text-xs font-bold text-gray-800">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-brand-500 transition rounded"
+                    className="w-6 h-6 flex items-center justify-center text-gray-500 hover:opacity-70 transition rounded"
                   >
                     <Plus size={12} />
                   </button>
                 </div>
-                <span className="font-bold text-brand-500 text-sm">{formatCurrency(item.line_total)}</span>
+                <span className="font-bold text-sm" style={{ color: accent }}>{formatCurrency(item.line_total)}</span>
               </div>
             </div>
             <button
@@ -161,7 +162,8 @@ export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }:
                 </div>
                 <button
                   onClick={() => handleAddUpsell(item)}
-                  className="shrink-0 w-7 h-7 bg-brand-500 text-white rounded-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition"
+                  className="shrink-0 w-7 h-7 text-white rounded-lg flex items-center justify-center hover:opacity-80 active:scale-95 transition"
+                  style={{ background: accent }}
                   aria-label={`Add ${item.name}`}
                 >
                   <Plus size={14} />
@@ -189,7 +191,8 @@ export default function Cart({ onCheckout, taxRate, restaurantId, onUpsellAdd }:
 
       <button
         onClick={onCheckout}
-        className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-sm shadow-brand-200 text-sm"
+        className="w-full text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-sm text-sm hover:opacity-90"
+        style={{ background: accent }}
       >
         Checkout · {formatCurrency(total)}
       </button>

@@ -16,7 +16,7 @@ CREATE TABLE public.ai_messages_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   restaurant_id uuid NOT NULL,
   customer_id uuid,
-  message_type text NOT NULL CHECK (message_type = ANY (ARRAY['cart_recovery'::text, 'win_back'::text, 'loyalty_nudge'::text])),
+  message_type text NOT NULL CHECK (message_type = ANY (ARRAY['cart_recovery'::text, 'win_back'::text, 'loyalty_nudge'::text, 'birthday'::text, 'after_order'::text, 'new_item_launch'::text, 'quiet_day'::text, 'milestone'::text])),
   channel text NOT NULL DEFAULT 'email'::text CHECK (channel = ANY (ARRAY['email'::text, 'push'::text])),
   reference_id text,
   subject text,
@@ -24,6 +24,53 @@ CREATE TABLE public.ai_messages_log (
   CONSTRAINT ai_messages_log_pkey PRIMARY KEY (id),
   CONSTRAINT ai_messages_log_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
   CONSTRAINT ai_messages_log_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
+);
+CREATE TABLE public.campaign_automation_settings (
+  restaurant_id uuid NOT NULL,
+  birthday_enabled boolean NOT NULL DEFAULT true,
+  after_order_enabled boolean NOT NULL DEFAULT true,
+  quiet_day_enabled boolean NOT NULL DEFAULT true,
+  milestone_enabled boolean NOT NULL DEFAULT true,
+  new_item_enabled boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT campaign_automation_settings_pkey PRIMARY KEY (restaurant_id),
+  CONSTRAINT campaign_automation_settings_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
+);
+CREATE TABLE public.campaign_contacts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  campaign_id uuid NOT NULL,
+  restaurant_id uuid NOT NULL,
+  customer_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'sent'::text CHECK (status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text, 'clicked'::text, 'converted'::text])),
+  click_token uuid NOT NULL DEFAULT gen_random_uuid(),
+  subject text,
+  sent_at timestamp with time zone,
+  clicked_at timestamp with time zone,
+  converted_at timestamp with time zone,
+  order_id uuid,
+  revenue_attributed numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT campaign_contacts_pkey PRIMARY KEY (id),
+  CONSTRAINT campaign_contacts_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES public.campaigns(id),
+  CONSTRAINT campaign_contacts_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
+  CONSTRAINT campaign_contacts_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
+  CONSTRAINT campaign_contacts_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+);
+CREATE TABLE public.campaigns (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  restaurant_id uuid NOT NULL,
+  campaign_type text NOT NULL CHECK (campaign_type = ANY (ARRAY['birthday'::text, 'after_order'::text, 'new_item_launch'::text, 'quiet_day'::text, 'milestone'::text, 'win_back'::text, 'cart_recovery'::text, 'loyalty_nudge'::text])),
+  name text NOT NULL,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'paused'::text, 'completed'::text])),
+  sent_count integer NOT NULL DEFAULT 0,
+  click_count integer NOT NULL DEFAULT 0,
+  order_count integer NOT NULL DEFAULT 0,
+  revenue_attributed numeric NOT NULL DEFAULT 0,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT campaigns_pkey PRIMARY KEY (id),
+  CONSTRAINT campaigns_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
 );
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -314,10 +361,12 @@ CREATE TABLE public.orders (
   payment_method text NOT NULL DEFAULT 'cash'::text CHECK (payment_method = ANY (ARRAY['cash'::text, 'stripe'::text])),
   stripe_payment_intent_id text,
   payment_status text NOT NULL DEFAULT 'unpaid'::text CHECK (payment_status = ANY (ARRAY['unpaid'::text, 'paid'::text, 'failed'::text, 'refunded'::text])),
+  campaign_contact_id uuid,
   CONSTRAINT orders_pkey PRIMARY KEY (id),
   CONSTRAINT orders_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
   CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
-  CONSTRAINT orders_customer_user_id_fkey FOREIGN KEY (customer_user_id) REFERENCES auth.users(id)
+  CONSTRAINT orders_customer_user_id_fkey FOREIGN KEY (customer_user_id) REFERENCES auth.users(id),
+  CONSTRAINT orders_campaign_contact_id_fkey FOREIGN KEY (campaign_contact_id) REFERENCES public.campaign_contacts(id)
 );
 CREATE TABLE public.platform_admins (
   user_id uuid NOT NULL,
@@ -388,6 +437,26 @@ CREATE TABLE public.restaurant_payment_settings (
   stripe_account_id text,
   CONSTRAINT restaurant_payment_settings_pkey PRIMARY KEY (id),
   CONSTRAINT restaurant_payment_settings_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
+);
+CREATE TABLE public.restaurant_website_settings (
+  restaurant_id uuid NOT NULL,
+  hero_headline text,
+  hero_subheadline text,
+  about_title text,
+  about_body text,
+  accent_color text NOT NULL DEFAULT '#037FFC'::text,
+  gallery_urls ARRAY NOT NULL DEFAULT '{}'::text[],
+  seo_meta_description text,
+  seo_keywords text,
+  show_gallery boolean NOT NULL DEFAULT true,
+  show_hours_on_home boolean NOT NULL DEFAULT true,
+  show_map_link boolean NOT NULL DEFAULT true,
+  google_analytics_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  template text NOT NULL DEFAULT 'modern'::text CHECK (template = ANY (ARRAY['modern'::text, 'bold'::text, 'minimal'::text, 'classic'::text])),
+  CONSTRAINT restaurant_website_settings_pkey PRIMARY KEY (restaurant_id),
+  CONSTRAINT restaurant_website_settings_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
 );
 CREATE TABLE public.restaurants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
